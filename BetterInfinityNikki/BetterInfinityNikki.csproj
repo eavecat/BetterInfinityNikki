@@ -1,0 +1,99 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<AssemblyName>BetterIN</AssemblyName>
+		<Version>0.1.0-alpha.1</Version>
+		<IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
+		<OutputType>WinExe</OutputType>
+		<TargetFramework>net8.0-windows10.0.22621.0</TargetFramework>
+		<Nullable>enable</Nullable>
+		<UseWPF>true</UseWPF>
+		<UseWindowsForms>true</UseWindowsForms>
+		<LangVersion>12.0</LangVersion>
+		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+		<ApplicationIcon>Resources\Images\logo.ico</ApplicationIcon>
+		<Platforms>x64</Platforms>
+		<DebugType>embedded</DebugType>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<Resource Include="Resources\Images\*.jpg" />
+		<Resource Include="Resources\Images\*.png" />
+		<Resource Include="Resources\Images\*.ico" />
+		<Resource Include="Resources\Fonts\*.ttf" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<!-- UI Framework -->
+		<PackageReference Include="WPF-UI" Version="4.2.0" />
+		<PackageReference Include="WPF-UI.DependencyInjection" Version="4.2.0" />
+		<PackageReference Include="WPF-UI.Tray" Version="4.2.0" />
+		<PackageReference Include="WPF-UI.Violeta" Version="4.2.0.10" />
+		<PackageReference Include="Microsoft.Xaml.Behaviors.Wpf" Version="1.1.122" />
+		
+		<!-- MVVM -->
+		<PackageReference Include="CommunityToolkit.Mvvm" Version="8.2.2" />
+		
+		<!-- Dependency Injection & Hosting -->
+		<PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="9.0.4" />
+		<PackageReference Include="Microsoft.Extensions.Hosting" Version="9.0.4" />
+		<PackageReference Include="Microsoft.Extensions.Logging" Version="9.0.4" />
+		
+		<!-- BetterGI Assets -->
+		<PackageReference Include="BetterGI.Assets.Model" Version="1.0.22" />
+		<PackageReference Include="Microsoft.ML.OnnxRuntime.DirectML" Version="1.21.0" />
+		<!--排除掉cpu的runtime dll-->
+		<PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.21.0" IncludeAssets="none" />
+		<PackageReference Include="Microsoft.ML.OnnxRuntime.Managed" Version="1.21.0" />
+		
+		<!-- Logging -->
+		<PackageReference Include="Serilog.Extensions.Logging" Version="9.0.1" />
+		<PackageReference Include="Serilog.Sinks.Console" Version="6.0.0" />
+		<PackageReference Include="Serilog.Sinks.File" Version="6.0.0" />
+		
+		<!-- JSON & Serialization -->
+		<PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+		<PackageReference Include="YamlDotNet" Version="16.3.0" />
+		
+		<!-- Utilities -->
+		<PackageReference Include="DeviceId" Version="6.9.0" />
+		<PackageReference Include="DeviceId.Windows" Version="6.9.0" />
+		<PackageReference Include="Semver" Version="3.0.0" />
+		<PackageReference Include="System.Drawing.Common" Version="10.0.0" />
+		
+		<!-- OpenCV -->
+		<PackageReference Include="OpenCvSharp4.WpfExtensions" Version="4.11.0.20250507" />
+		<PackageReference Include="OpenCvSharp4.Extensions" Version="4.11.0.20250507" />
+		<PackageReference Include="OpenCvSharp4.Windows" Version="4.11.0.20250507" />
+		
+		<PackageReference Include="YoloSharp" Version="6.0.3" />
+		<PackageReference Include="MouseKeyHook" Version="5.7.1" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\Fischless.GameCapture\Fischless.GameCapture.csproj" />
+		<ProjectReference Include="..\Fischless.HotkeyCapture\Fischless.HotkeyCapture.csproj" />
+		<ProjectReference Include="..\Fischless.WindowsInput\Fischless.WindowsInput.csproj" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<None Update="User\**">
+			<CopyToOutputDirectory>Always</CopyToOutputDirectory>
+		</None>
+	</ItemGroup>
+
+	<ItemGroup>
+		<!-- GameTask Assets -->
+		<None Update="GameTask\**\Assets\**">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</None>
+	</ItemGroup>
+
+	<ItemGroup>
+	  <Folder Include="GameTask\AutoPathing\" />
+	  <Folder Include="Service\Interface\" />
+	  <Folder Include="View\Pages\" />
+	  <Folder Include="ViewModel\Pages\" />
+	</ItemGroup>
+
+</Project>
