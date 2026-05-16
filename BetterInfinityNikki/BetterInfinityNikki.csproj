@@ -50,6 +50,7 @@
 		<PackageReference Include="Serilog.Extensions.Logging" Version="9.0.1" />
 		<PackageReference Include="Serilog.Sinks.Console" Version="6.0.0" />
 		<PackageReference Include="Serilog.Sinks.File" Version="6.0.0" />
+		<PackageReference Include="Serilog.Sinks.RichTextBoxEx.Wpf" Version="1.1.0.1" />
 		
 		<!-- JSON & Serialization -->
 		<PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
@@ -91,6 +92,7 @@
 
 	<ItemGroup>
 	  <Folder Include="GameTask\AutoPathing\" />
+	  <Folder Include="GameTask\AutoPick\Assets\1920x1080\" />
 	  <Folder Include="Service\Interface\" />
 	  <Folder Include="View\Pages\" />
 	  <Folder Include="ViewModel\Pages\" />

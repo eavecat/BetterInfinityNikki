@@ -255,6 +255,16 @@ public partial class HomePageViewModel : ObservableObject, IViewModel
                 _taskDispatcher.UiTaskStartTickEvent -= OnUiTaskStartTick;
                 _taskDispatcher.UiTaskStopTickEvent += OnUiTaskStopTick;
                 _taskDispatcher.UiTaskStartTickEvent += OnUiTaskStartTick;
+                
+                // 创建并显示遮罩窗口
+                if (Config.MaskWindowConfig.MaskEnabled)
+                {
+                    _maskWindow ??= new MaskWindow();
+                    _maskWindow.Show();
+                    MaskWindow.Instance().RefreshPosition();
+                    _logger.LogInformation("遮罩窗口已启动");
+                }
+                
                 TaskDispatcherEnabled = true;
             }
         }
@@ -284,6 +294,7 @@ public partial class HomePageViewModel : ObservableObject, IViewModel
     }
 
     private IntPtr _hWnd;
+    private MaskWindow? _maskWindow;
 
     [RelayCommand]
     public void OnStopTrigger()
@@ -298,6 +309,18 @@ public partial class HomePageViewModel : ObservableObject, IViewModel
             if (TaskDispatcherEnabled)
             {
                 _taskDispatcher.Stop();
+                
+                // 隐藏或关闭遮罩窗口
+                if (_maskWindow != null && _maskWindow.IsExist())
+                {
+                    _maskWindow.Hide();
+                }
+                else
+                {
+                    _maskWindow?.Close();
+                    _maskWindow = null;
+                }
+                
                 TaskDispatcherEnabled = false;
                 TaskContext.Instance().IsInitialized = false;
             }

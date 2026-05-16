@@ -63,6 +63,14 @@
                     </ui:NavigationViewItem.Icon>
                 </ui:NavigationViewItem>
 
+                <ui:NavigationViewItem Content="实时触发"
+                                       NavigationCacheMode="Enabled"
+                                       TargetPageType="{x:Type pages:TriggerSettingsPage}">
+                    <ui:NavigationViewItem.Icon>
+                        <ui:SymbolIcon Symbol="Timer24" />
+                    </ui:NavigationViewItem.Icon>
+                </ui:NavigationViewItem>
+
                 <ui:NavigationViewItem Content="设置"
                                        NavigationCacheMode="Enabled"
                                        TargetPageType="{x:Type pages:CommonSettingsPage}">

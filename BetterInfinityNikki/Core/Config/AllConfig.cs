@@ -38,6 +38,21 @@ public partial class AllConfig : ObservableObject
     public HardwareAccelerationConfig HardwareAccelerationConfig { get; set; } = new();
     
     /// <summary>
+    /// 遮罩窗口配置
+    /// </summary>
+    public MaskWindowConfig MaskWindowConfig { get; set; } = new();
+
+    /// <summary>
+    /// 自动拾取配置
+    /// </summary>
+    public AutoPickConfig AutoPickConfig { get; set; } = new();
+
+    /// <summary>
+    /// 自动剧情配置
+    /// </summary>
+    public AutoSkipConfig AutoSkipConfig { get; set; } = new();
+    
+    /// <summary>
     /// 窗口捕获的方式
     /// </summary>
     [ObservableProperty]
@@ -60,6 +75,9 @@ public partial class AllConfig : ObservableObject
         KeyBindingsConfig.PropertyChanged += OnAnyPropertyChanged;
         OtherConfig.PropertyChanged += OnAnyPropertyChanged;
         HardwareAccelerationConfig.PropertyChanged += OnAnyPropertyChanged;
+        MaskWindowConfig.PropertyChanged += OnAnyPropertyChanged;
+        AutoPickConfig.PropertyChanged += OnAnyPropertyChanged;
+        AutoSkipConfig.PropertyChanged += OnAnyPropertyChanged;
     }
 
     public void OnAnyPropertyChanged(object? sender, EventArgs args)
@@ -78,6 +96,12 @@ public partial class CommonConfig : ObservableObject
     /// </summary>
     [ObservableProperty]
     private bool _isFirstRun = true;
+
+    /// <summary>
+    ///     UID遮盖是否启用
+    /// </summary>
+    [ObservableProperty]
+    private bool _screenshotUidCoverEnabled = true;
 
     /// <summary>
     /// 退出到托盘

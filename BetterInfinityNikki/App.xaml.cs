@@ -16,6 +16,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Serilog;
 using Serilog.Events;
+using Serilog.Sinks.RichTextBox.Abstraction;
 using Wpf.Ui;
 using Wpf.Ui.DependencyInjection;
 using Vanara.PInvoke;
@@ -37,7 +38,13 @@ public partial class App : Application
                 Directory.CreateDirectory(logFolder);
                 var logFile = Path.Combine(logFolder, "better-infinity-nikki.log");
 
-                Log.Logger = new LoggerConfiguration()
+                var all = configService.Get();
+                
+                // 使用 Serilog.Sinks.RichTextBoxEx.Wpf 库提供的 RichTextBoxImpl
+                var richTextBox = new RichTextBoxImpl();
+                services.AddSingleton<IRichTextBox>(richTextBox);
+
+                var loggerConfiguration = new LoggerConfiguration()
                     .WriteTo.File(logFile,
                         outputTemplate: "[{Timestamp:HH:mm:ss.fff}] [{Level:u3}] {SourceContext}{NewLine}{Message}{NewLine}{Exception}{NewLine}",
                         rollingInterval: RollingInterval.Day,
@@ -46,8 +53,16 @@ public partial class App : Application
                     .WriteTo.Console(outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}")
                     .MinimumLevel.Debug()
                     .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
-                    .MinimumLevel.Override("Microsoft.Hosting.Lifetime", LogEventLevel.Warning)
-                    .CreateLogger();
+                    .MinimumLevel.Override("Microsoft.Hosting.Lifetime", LogEventLevel.Warning);
+                
+                // 如果遮罩窗口启用，添加 RichTextBox 日志输出
+                if (all.MaskWindowConfig.MaskEnabled)
+                {
+                    loggerConfiguration.WriteTo.RichTextBox(richTextBox, LogEventLevel.Information,
+                        "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}");
+                }
+
+                Log.Logger = loggerConfiguration.CreateLogger();
 
                 services.AddLogging(c => c.AddSerilog());
 
@@ -67,6 +82,7 @@ public partial class App : Application
 
                 // Views - Pages (带 ViewModel 的页面使用 AddView)
                 services.AddView<View.Pages.HomePage, ViewModel.Pages.HomePageViewModel>();
+                services.AddView<View.Pages.TriggerSettingsPage, ViewModel.Pages.TriggerSettingsPageViewModel>();
                 services.AddSingleton<View.Pages.CommonSettingsPage>();
                 
                 // OCR Services

@@ -61,7 +61,7 @@ public class GameLoadingTrigger : ITaskTrigger
 
     public void Init()
     {
-        _logger.LogInformation($"自动进入游戏功能 Init() 被调用，配置 AutoEnterGameEnabled={_config.AutoEnterGameEnabled}");
+        // _logger.LogInformation($"自动进入游戏功能 Init() 被调用，配置 AutoEnterGameEnabled={_config.AutoEnterGameEnabled}");
 
         // 如果配置未启用，则禁用此触发器
         if (!_config.AutoEnterGameEnabled)
@@ -75,7 +75,7 @@ public class GameLoadingTrigger : ITaskTrigger
         _triggerStartTime = DateTime.Now;
         _hasClickedEnterGame = false;
 
-        _logger.LogInformation("自动进入游戏功能已初始化，GlobalEnabled={GlobalEnabled}", GlobalEnabled);
+        _logger.LogInformation("自动进入游戏功能已初始化");
     }
 
     public void OnCapture(CaptureContent content)
@@ -86,8 +86,8 @@ public class GameLoadingTrigger : ITaskTrigger
             return;
         }
 
-        _logger.LogDebug("OnCapture 被调用，GlobalEnabled={GlobalEnabled}, IsEnabled={IsEnabled}", GlobalEnabled,
-            IsEnabled);
+        // _logger.LogDebug("OnCapture 被调用，GlobalEnabled={GlobalEnabled}, IsEnabled={IsEnabled}", GlobalEnabled,
+        //     IsEnabled);
 
         _prevExecuteTime = DateTime.Now;
 

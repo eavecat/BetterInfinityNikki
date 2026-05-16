@@ -105,7 +105,6 @@ public class SystemControl
         {
             using var capture = GameCaptureFactory.Create(captureMode);
             capture.Start(launcherWnd);
-            await Task.Delay(3000);
 
             // 捕获启动器窗口截图
             Mat? mat = null;
@@ -126,9 +125,6 @@ public class SystemControl
             {
                 return false;
             }
-
-            Console.WriteLine($"截图尺寸: {mat.Width}-{mat.Height}");
-
 
             // 只识别整个截图的底部区域（因为截图可能只是客户区）
             var roiRect = new Rect(

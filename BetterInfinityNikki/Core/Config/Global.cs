@@ -15,4 +15,26 @@ public class Global
     {
         return Path.Combine(StartUpPath, relativePath);
     }
+
+    public static string ReadAllTextIfExist(string relativePath)
+    {
+        var path = Absolute(relativePath);
+        if (File.Exists(path))
+        {
+            return File.ReadAllText(path);
+        }
+        return string.Empty;
+    }
+
+    public static void WriteAllText(string relativePath, string content)
+    {
+        var path = Absolute(relativePath);
+        // 确保目录存在
+        var directory = Path.GetDirectoryName(path);
+        if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
+        {
+            Directory.CreateDirectory(directory);
+        }
+        File.WriteAllText(path, content);
+    }
 }

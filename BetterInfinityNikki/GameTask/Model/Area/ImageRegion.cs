@@ -1,4 +1,4 @@
-﻿using System.Text.RegularExpressions;
+using System.Text.RegularExpressions;
 using BetterInfinityNikki.Core.Recognition;
 using BetterInfinityNikki.Core.Recognition.OCR;
 using BetterInfinityNikki.Core.Recognition.OpenCv;
@@ -150,18 +150,29 @@ public class ImageRegion : Region
 
             if (ro.RegionOfInterest != default)
             {
-                // TODO roi 是可以加缓存的
-                if (!(0 <= ro.RegionOfInterest.X && 0 <= ro.RegionOfInterest.Width &&
-                      ro.RegionOfInterest.X + ro.RegionOfInterest.Width <= roi.Cols
-                      && 0 <= ro.RegionOfInterest.Y && 0 <= ro.RegionOfInterest.Height &&
-                      ro.RegionOfInterest.Y + ro.RegionOfInterest.Height <= roi.Rows))
+                // 检查 ROI 是否溢出，如果溢出则自动裁剪
+                var roiRect = ro.RegionOfInterest;
+                var needsClamp = false;
+                
+                if (roiRect.X < 0 || roiRect.Y < 0 || 
+                    roiRect.X + roiRect.Width > roi.Cols || 
+                    roiRect.Y + roiRect.Height > roi.Rows)
                 {
-                    TaskControl.Logger.LogError("在图像{W1}x{H1}中查找模板,名称：{Name},ROI位置{X2}x{Y2},区域{H2}x{W2},边界溢出！",
-                        roi.Width, roi.Height, ro.Name, ro.RegionOfInterest.X, ro.RegionOfInterest.Y,
-                        ro.RegionOfInterest.Width, ro.RegionOfInterest.Height);
+                    TaskControl.Logger.LogWarning(
+                        "识别对象{Name}的ROI区域{X},{Y},{W},{H}超出图像范围{ImgW}x{ImgH}，已自动裁剪",
+                        ro.Name, roiRect.X, roiRect.Y, roiRect.Width, roiRect.Height, roi.Cols, roi.Rows);
+                    
+                    // 自动裁剪 ROI 到有效范围
+                    var clampedX = Math.Max(0, roiRect.X);
+                    var clampedY = Math.Max(0, roiRect.Y);
+                    var clampedWidth = Math.Min(roiRect.Width, roi.Cols - clampedX);
+                    var clampedHeight = Math.Min(roiRect.Height, roi.Rows - clampedY);
+                    
+                    roiRect = new Rect(clampedX, clampedY, clampedWidth, clampedHeight);
+                    needsClamp = true;
                 }
 
-                roi = new Mat(roi, ro.RegionOfInterest);
+                roi = new Mat(roi, roiRect);
             }
 
             var p = MatchTemplateHelper.MatchTemplate(roi, template, ro.TemplateMatchMode, ro.MaskMat, ro.Threshold);
@@ -198,7 +209,9 @@ public class ImageRegion : Region
             var roi = SrcMat;
             if (ro.RegionOfInterest != default)
             {
-                roi = new Mat(SrcMat, ro.RegionOfInterest);
+                // 自动裁剪 ROI 到有效范围
+                var roiRect = ro.RegionOfInterest.ClampTo(SrcMat);
+                roi = new Mat(SrcMat, roiRect);
             }
 
             var result = OcrFactory.Paddle.OcrResult(roi);
@@ -279,7 +292,9 @@ public class ImageRegion : Region
                 roi = SrcMat;
                 if (ro.RegionOfInterest != default)
                 {
-                    roi = new Mat(SrcMat, ro.RegionOfInterest);
+                    // 自动裁剪 ROI 到有效范围
+                    var roiRect = ro.RegionOfInterest.ClampTo(SrcMat);
+                    roi = new Mat(SrcMat, roiRect);
                 }
 
                 roi = roi.Clone();
@@ -295,7 +310,9 @@ public class ImageRegion : Region
                 roi = SrcMat;
                 if (ro.RegionOfInterest != default)
                 {
-                    roi = new Mat(SrcMat, ro.RegionOfInterest);
+                    // 自动裁剪 ROI 到有效范围
+                    var roiRect = ro.RegionOfInterest.ClampTo(SrcMat);
+                    roi = new Mat(SrcMat, roiRect);
                 }
             }
 

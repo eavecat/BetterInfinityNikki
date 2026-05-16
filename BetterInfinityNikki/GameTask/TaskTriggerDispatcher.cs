@@ -7,11 +7,14 @@ using OpenCvSharp;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Threading;
 using BetterInfinityNikki.GameTask.Common.BgiVision;
 using BetterInfinityNikki.GameTask.GameLoading;
+using BetterInfinityNikki.View;
 using Rect = OpenCvSharp.Rect;
+using Vanara.PInvoke;
 
 namespace BetterInfinityNikki.GameTask
 {
@@ -29,15 +32,30 @@ namespace BetterInfinityNikki.GameTask
         private static readonly object _locker = new();
         private int _frameIndex = 0;
 
+        private RECT _gameRect = RECT.Empty;
+        private bool _prevGameActive;
+
         private DateTime _prevManualGc = DateTime.MinValue;
 
         private static readonly object _triggerListLocker = new();
 
+        // 窗口事件钩子
+        private User32.HWINEVENTHOOK _winEventHookMoveSize;
+        private User32.HWINEVENTHOOK _winEventHookLocation;
+        private User32.WinEventProc? _winEventProc;
+
+        // 窗口事件常量
+        private const uint EVENT_SYSTEM_MOVESIZESTART = 0x000A;
+        private const uint EVENT_SYSTEM_MOVESIZEEND = 0x000B;
+        private const uint EVENT_OBJECT_LOCATIONCHANGE = 0x800B;
+        private const uint WINEVENT_SKIPOWNPROCESS = 0x0001;
+        private const uint WINEVENT_SKIPOWNTHREAD = 0x0002;
+
         public event EventHandler? UiTaskStopTickEvent;
         public event EventHandler? UiTaskStartTickEvent;
 
-        private GameUiCategory PrevGameUiCategory = GameUiCategory.Unknown;
-        private DateTime PrevGameUiChangeTime = DateTime.Now;
+        private GameUiCategory PrevGameUiCategory = GameUiCategory.Unknown; // 上一个UI类别
+        private DateTime PrevGameUiChangeTime = DateTime.Now; // 上一次UI变化时间
 
         public TaskTriggerDispatcher()
         {
@@ -53,6 +71,21 @@ namespace BetterInfinityNikki.GameTask
             }
 
             return _instance;
+        }
+
+        public static IGameCapture GlobalGameCapture
+        {
+            get
+            {
+                _instance = Instance();
+
+                if (_instance.GameCapture == null)
+                {
+                    throw new Exception("截图器未初始化!");
+                }
+
+                return _instance.GameCapture;
+            }
         }
 
         public void ClearTriggers()
@@ -90,7 +123,7 @@ namespace BetterInfinityNikki.GameTask
         {
             // 初始化截图器
             GameCapture = GameCaptureFactory.Create(mode);
-            // 激活窗口
+            // 激活窗口 保证后面能够正常获取窗口信息
             SystemControl.ActivateWindow(hWnd);
 
             // 初始化任务上下文(一定要在初始化触发器前完成)
@@ -103,6 +136,14 @@ namespace BetterInfinityNikki.GameTask
             // 启动截图
             GameCapture.Start(hWnd, new Dictionary<string, object>());
 
+            // 使用 SetWinEventHook 监听窗口移动和大小变化事件
+            _winEventProc = WinEventCallback;
+            var flags = (User32.WINEVENT)(WINEVENT_SKIPOWNPROCESS | WINEVENT_SKIPOWNTHREAD);
+            _winEventHookMoveSize = User32.SetWinEventHook(EVENT_SYSTEM_MOVESIZESTART, EVENT_SYSTEM_MOVESIZEEND,
+                default, _winEventProc, 0, 0, flags);
+            _winEventHookLocation = User32.SetWinEventHook(EVENT_OBJECT_LOCATIONCHANGE, EVENT_OBJECT_LOCATIONCHANGE,
+                default, _winEventProc, 0, 0, flags);
+
             // 启动定时器
             _frameIndex = 0;
             _timer.Interval = interval;
@@ -110,16 +151,27 @@ namespace BetterInfinityNikki.GameTask
             {
                 _timer.Start();
             }
-
-            _logger.LogInformation("截图器已启动，模式: {Mode}, 间隔: {Interval}ms", mode, interval);
         }
 
         public void Stop()
         {
             _timer.Stop();
             GameCapture?.Stop();
-            
-            _logger.LogInformation("截图器已停止");
+            _gameRect = RECT.Empty;
+            _prevGameActive = false;
+
+            // 卸载窗口事件钩子
+            if (_winEventHookMoveSize != default)
+            {
+                User32.UnhookWinEvent(_winEventHookMoveSize);
+                _winEventHookMoveSize = default;
+            }
+
+            if (_winEventHookLocation != default)
+            {
+                User32.UnhookWinEvent(_winEventHookLocation);
+                _winEventHookLocation = default;
+            }
         }
 
         public void StartTimer()
@@ -138,6 +190,11 @@ namespace BetterInfinityNikki.GameTask
             }
         }
 
+        public void Dispose()
+        {
+            Stop();
+        }
+
         public void Tick(object? sender, EventArgs e)
         {
             var hasLock = false;
@@ -151,6 +208,7 @@ namespace BetterInfinityNikki.GameTask
                 }
 
                 // 检查截图器是否初始化
+                var maskWindow = MaskWindow.InstanceNullable();
                 if (GameCapture == null || !GameCapture.IsCapturing)
                 {
                     if (!TaskContext.Instance().SystemInfo.GameProcess.HasExited)
@@ -159,10 +217,96 @@ namespace BetterInfinityNikki.GameTask
                     }
                     else
                     {
-                        _logger.LogInformation("游戏已退出，自动停止截图器");
+                        _logger.LogInformation("游戏已退出，BetterIN 自动停止截图器");
                     }
 
                     UiTaskStopTickEvent?.Invoke(sender, e);
+                    maskWindow?.Invoke(maskWindow.HideSelf);
+                    return;
+                }
+
+                // 如果是最小化状态，直接不进行截图
+                if (SystemControl.IsInfinityNikkiMinimized())
+                {
+                    return;
+                }
+
+                // 检查游戏是否在前台
+                var hasBackgroundTriggerToRun = false;
+                var active = SystemControl.IsInfinityNikkiActive();
+                if (!active)
+                {
+                    // 检查游戏是否已结束
+                    if (TaskContext.Instance().SystemInfo.GameProcess.HasExited)
+                    {
+                        _logger.LogInformation("游戏已退出，BetterIN 自动停止截图器");
+                        UiTaskStopTickEvent?.Invoke(sender, e);
+                        return;
+                    }
+
+                    if (_prevGameActive)
+                    {
+                        _logger.LogDebug("游戏窗口不在前台, 不再进行截屏");
+                    }
+
+                    var pName = SystemControl.GetActiveProcessName();
+                    if (pName != "Idle" && pName != "BetterIN" && pName != "X6Game-Win64-Shipping" &&
+                        pName != "InfinityNikki")
+                    {
+                        maskWindow?.Invoke(() => { maskWindow.HideSelf(); });
+                    }
+
+                    _prevGameActive = active;
+
+                    if (_triggers != null)
+                    {
+                        lock (_triggerListLocker)
+                        {
+                            var exclusive = _triggers.FirstOrDefault(t => t is { IsEnabled: true, IsExclusive: true });
+                            if (exclusive != null)
+                            {
+                                hasBackgroundTriggerToRun = exclusive.IsBackgroundRunning;
+                            }
+                            else
+                            {
+                                hasBackgroundTriggerToRun = _triggers.Any(t =>
+                                    t is { IsEnabled: true, IsBackgroundRunning: true });
+                            }
+                        }
+                    }
+
+                    if (!hasBackgroundTriggerToRun)
+                    {
+                        // 没有后台运行的触发器，这次不再进行截图
+                        return;
+                    }
+                }
+                else
+                {
+                    // 游戏在前台，显示遮罩窗口
+                    maskWindow?.BeginInvoke(() =>
+                    {
+                        if (maskWindow.IsExist())
+                        {
+                            maskWindow.Show();
+                            if (!_prevGameActive)
+                            {
+                                maskWindow.BringToTop();
+                            }
+                        }
+                    });
+
+                    _prevGameActive = active;
+                    // 移动游戏窗口的时候同步遮罩窗口的位置,此时不进行捕获
+                    if (SyncMaskWindowPosition())
+                    {
+                        return;
+                    }
+                }
+
+                var hasEnabledTriggers = _triggers != null && _triggers.Exists(t => t.IsEnabled);
+                if (!hasEnabledTriggers && !active)
+                {
                     return;
                 }
 
@@ -183,7 +327,6 @@ namespace BetterInfinityNikki.GameTask
                 // 循环执行所有触发器
                 using var content = new CaptureContent(bitmap, _frameIndex, _timer.Interval);
 
-                var hasEnabledTriggers = _triggers != null && _triggers.Exists(t => t.IsEnabled);
                 if (!hasEnabledTriggers)
                 {
                     return;
@@ -191,7 +334,7 @@ namespace BetterInfinityNikki.GameTask
 
                 lock (_triggerListLocker)
                 {
-                    var needRunTriggers = new List<ITaskTrigger>();
+                    var needRunTriggers = new List<ITaskTrigger>(); // 最终要执行的触发器列表
                     var exclusiveTrigger = _triggers!.FirstOrDefault(t => t is { IsEnabled: true, IsExclusive: true });
                     if (exclusiveTrigger != null)
                     {
@@ -200,6 +343,11 @@ namespace BetterInfinityNikki.GameTask
                     else
                     {
                         var runningTriggers = _triggers!.Where(t => t.IsEnabled);
+                        if (hasBackgroundTriggerToRun)
+                        {
+                            runningTriggers = runningTriggers.Where(t => t.IsBackgroundRunning);
+                        }
+
                         needRunTriggers.AddRange(runningTriggers);
                     }
 
@@ -215,30 +363,31 @@ namespace BetterInfinityNikki.GameTask
 
                         foreach (var trigger in needRunTriggers)
                         {
-                            if ((PrevGameUiCategory != content.CurrentGameUiCategory ||
-                                 (DateTime.Now - PrevGameUiChangeTime).TotalSeconds <= 30)
-                                || trigger.SupportedGameUiCategory == content.CurrentGameUiCategory)
+                            var shouldRun =
+                                (PrevGameUiCategory != content.CurrentGameUiCategory ||
+                                 (DateTime.Now - PrevGameUiChangeTime).TotalSeconds <= 30) // UI变化了后的30s内则所有触发器执行一遍
+                                || trigger.SupportedGameUiCategory == content.CurrentGameUiCategory;
+                            if (shouldRun)
                             {
                                 trigger.OnCapture(content);
+                                speedTimer.Record(trigger.Name);
                             }
                         }
+
+                        PrevGameUiCategory = content.CurrentGameUiCategory;
                     }
                 }
 
-                PrevGameUiCategory = content.CurrentGameUiCategory;
-
-                speedTimer.Record("总耗时");
-                if (speedTimer.GetRecordTime("总耗时") > _timer.Interval)
-                {
-                    _logger.LogDebug("处理超时: {Time}ms", speedTimer.GetRecordTime("总耗时"));
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Tick执行异常");
+                speedTimer.DebugPrint();
             }
             finally
             {
+                if ((DateTime.Now - _prevManualGc).TotalSeconds > 2)
+                {
+                    GC.Collect();
+                    _prevManualGc = DateTime.Now;
+                }
+
                 if (hasLock)
                 {
                     Monitor.Exit(_locker);
@@ -246,11 +395,117 @@ namespace BetterInfinityNikki.GameTask
             }
         }
 
-        public void Dispose()
+        /// <summary>
+        /// 移动游戏窗口的时候同步遮罩窗口的位置
+        /// </summary>
+        private bool SyncMaskWindowPosition()
         {
-            Stop();
-            _timer.Dispose();
-            GameCapture?.Dispose();
+            var hWnd = TaskContext.Instance().GameHandle;
+            var currentRect = SystemControl.GetCaptureRect(hWnd);
+            if (_gameRect == RECT.Empty)
+            {
+                _gameRect = new RECT(currentRect);
+            }
+            else if (_gameRect != currentRect)
+            {
+                // 窗口大小发生变化
+                if ((_gameRect.Width != currentRect.Width || _gameRect.Height != currentRect.Height)
+                    && !SizeIsZero(_gameRect) && !SizeIsZero(currentRect))
+                {
+                    _logger.LogError("► 游戏窗口大小发生变化 {W}x{H}->{CW}x{CH}, 自动重启截图器中...", _gameRect.Width, _gameRect.Height,
+                        currentRect.Width, currentRect.Height);
+                    
+                    // 延迟触发停止和启动事件，避免在锁保护下递归获取锁
+                    System.Windows.Application.Current?.Dispatcher.BeginInvoke(() =>
+                    {
+                        UiTaskStopTickEvent?.Invoke(null, EventArgs.Empty);
+                        UiTaskStartTickEvent?.Invoke(null, EventArgs.Empty);
+                        _logger.LogInformation("► 游戏窗口大小发生变化，截图器重启完成！");
+                    });
+                }
+
+                _gameRect = new RECT(currentRect);
+                TaskContext.Instance().SystemInfo.CaptureAreaRect = currentRect;
+                MaskWindow.Instance().RefreshPosition();
+                return true;
+            }
+
+            return false;
+        }
+
+        private bool SizeIsZero(RECT rect)
+        {
+            return rect.Width == 0 || rect.Height == 0;
+        }
+
+        private void WinEventCallback(User32.HWINEVENTHOOK hWinEventHook, uint @event, Vanara.PInvoke.HWND hwnd,
+            int idObject, int idChild, uint dwEventThread, uint dwmsEventTime)
+        {
+            var target = TaskContext.Instance().GameHandle;
+            if (target == IntPtr.Zero)
+            {
+                return;
+            }
+
+            if (idObject != 0)
+            {
+                return;
+            }
+
+            var hwndPtr = hwnd.DangerousGetHandle();
+            if (hwndPtr == target)
+            {
+                SyncMaskWindowPosition();
+            }
+        }
+
+        public void TakeScreenshot()
+        {
+            try
+            {
+                var path = Global.Absolute($@"log\screenshot\");
+                if (!Directory.Exists(path))
+                {
+                    Directory.CreateDirectory(path);
+                }
+
+                Mat mat;
+                try
+                {
+                    mat = TaskControl.CaptureGameImage(GameCapture);
+                }
+                catch (Exception)
+                {
+                    _logger.LogInformation("截图失败，未获取到图像");
+                    return;
+                }
+
+                var name = $@"{DateTime.Now:yyyyMMddHHmmssffff}.png";
+                var savePath = Global.Absolute($@"log\screenshot\{name}");
+                if (TaskContext.Instance().Config.CommonConfig.ScreenshotUidCoverEnabled)
+                {
+                    var assetScale = TaskContext.Instance().SystemInfo.ScaleTo1080PRatio;
+                    var rect = new Rect((int)(mat.Width - MaskWindowConfig.UidCoverRightBottomRect.X * assetScale),
+                        (int)(mat.Height - MaskWindowConfig.UidCoverRightBottomRect.Y * assetScale),
+                        (int)(MaskWindowConfig.UidCoverRightBottomRect.Width * assetScale),
+                        (int)(MaskWindowConfig.UidCoverRightBottomRect.Height * assetScale));
+                    mat.Rectangle(rect, Scalar.White, -1);
+                    Cv2.ImWrite(savePath, mat);
+                }
+                else
+                {
+                    Cv2.ImWrite(savePath, mat);
+                }
+
+                mat.Dispose();
+
+                _logger.LogInformation("截图已保存: {Name}", name);
+            }
+            catch (Exception e)
+            {
+                _logger.LogError("截图保存失败: {Message}", e.Message);
+                _logger.LogDebug("截图保存失败: {StackTrace}", e.StackTrace);
+            }
         }
     }
 }

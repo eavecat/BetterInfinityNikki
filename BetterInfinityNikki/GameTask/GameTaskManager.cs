@@ -1,4 +1,5 @@
 using BetterInfinityNikki.Core.Recognition.OpenCv;
+using BetterInfinityNikki.GameTask.AutoPick;
 using BetterInfinityNikki.GameTask.GameLoading;
 using BetterInfinityNikki.GameTask.GameLoading.Assets;
 using BetterInfinityNikki.GameTask.Model;
@@ -8,6 +9,8 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using BetterInfinityNikki.Core.Config;
+using BetterInfinityNikki.GameTask.AutoPick.Assets;
+using BetterInfinityNikki.View.Drawable;
 
 namespace BetterInfinityNikki.GameTask;
 
@@ -29,6 +32,9 @@ internal class GameTaskManager
 
         // 添加自动进入游戏触发器
         TriggerDictionary.TryAdd("GameLoading", new GameLoadingTrigger());
+
+        // 添加自动拾取触发器
+        TriggerDictionary.TryAdd("AutoPick", new AutoPickTrigger());
 
         return ConvertToTriggerList();
     }
@@ -74,11 +80,10 @@ internal class GameTaskManager
                 triggerName = "GameLoading";
                 trigger = new GameLoadingTrigger();
                 break;
-            // TODO: 添加更多触发器
-            // case "AutoPick":
-            //     triggerName = "AutoPick";
-            //     trigger = new AutoPickTrigger();
-            //     break;
+            case "AutoPick":
+                triggerName = "AutoPick";
+                trigger = new AutoPickTrigger();
+                break;
         }
 
         if (triggerName == null || trigger == null)
@@ -94,6 +99,9 @@ internal class GameTaskManager
         if (TriggerDictionary is { Count: > 0 })
         {
             TriggerDictionary.GetValueOrDefault("GameLoading")?.Init();
+            TriggerDictionary.GetValueOrDefault("AutoPick")?.Init();
+            // 清理画布
+            VisionContext.Instance().DrawContent.ClearAll();
         }
 
         ReloadAssets();
@@ -102,6 +110,7 @@ internal class GameTaskManager
     public static void ReloadAssets()
     {
         GameLoadingAssets.DestroyInstance();
+        AutoPickAssets.DestroyInstance();
     }
 
     /// <summary>

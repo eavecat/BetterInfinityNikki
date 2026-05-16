@@ -184,7 +184,7 @@ public static partial class Bv
         //
         // using var settingsRa = captureRa.Find(QuickTeleportAssets.Instance.MapSettingsButtonRo);
         // return settingsRa.IsExist();
-        return true;
+        return false;
     }
 
     /// <summary>
@@ -328,7 +328,7 @@ public static partial class Bv
     {
         // using var ra = captureRa.Find(AutoSkipAssets.Instance.DisabledUiButtonRo);
         // return ra.IsExist();
-        return true;
+        return false;
     }
 
     /// <summary>

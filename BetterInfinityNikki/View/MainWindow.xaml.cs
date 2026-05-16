@@ -1,7 +1,9 @@
 using BetterInfinityNikki.Helpers.Ui;
 using BetterInfinityNikki.ViewModel;
+using BetterInfinityNikki.Service.Interface;
 using System;
 using System.Windows;
+using System.Threading.Tasks;
 using BetterInfinityNikki.Helpers.DpiAwareness;
 using Wpf.Ui;
 using Wpf.Ui.Abstractions;
@@ -29,7 +31,15 @@ public partial class MainWindow : FluentWindow, INavigationWindow
 
         Application.Current.MainWindow = this;
 
-        Loaded += (s, e) => Activate();
+        Loaded += OnMainWindowLoaded;
+    }
+
+    private void OnMainWindowLoaded(object sender, RoutedEventArgs e)
+    {
+        Activate();
+        
+        // 不再在这里初始化遮罩窗口
+        // 遮罩窗口会在游戏启动并初始化 TaskContext 后由 HomePageViewModel 创建
     }
 
     protected override void OnSourceInitialized(EventArgs e)

@@ -18,6 +18,7 @@
             <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
             <converters:BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter2" />
             <converters:BooleanToVisibilityRevertConverter x:Key="BooleanToVisibilityRevertConverter" />
+            <converters:OverlayRelativeOrAbsoluteConverter x:Key="OverlayRelativeOrAbsoluteConverter" />
         </ResourceDictionary>
     </Application.Resources>
 </Application>

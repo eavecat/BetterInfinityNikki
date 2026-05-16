@@ -1,4 +1,4 @@
-﻿using System.Diagnostics;
+using System.Diagnostics;
 using BetterInfinityNikki.GameTask.Model.Area;
 using BetterInfinityNikki.Helpers;
 using OpenCvSharp;
