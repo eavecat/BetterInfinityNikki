@@ -60,7 +60,7 @@
 		<PackageReference Include="DeviceId" Version="6.9.0" />
 		<PackageReference Include="DeviceId.Windows" Version="6.9.0" />
 		<PackageReference Include="Semver" Version="3.0.0" />
-		<PackageReference Include="System.Drawing.Common" Version="10.0.0" />
+		<PackageReference Include="System.Drawing.Common" Version="10.0.7" />
 		
 		<!-- OpenCV -->
 		<PackageReference Include="OpenCvSharp4.WpfExtensions" Version="4.11.0.20250507" />

@@ -21,6 +21,27 @@ public partial class TriggerSettingsPageViewModel : ViewModel
     public TriggerSettingsPageViewModel(IConfigService configService)
     {
         Config = configService.Get();
+        
+        // 监听璨花捕影和芳间巡游的互斥变化
+        Config.AutoPickConfig.PropertyChanged += (sender, e) =>
+        {
+            if (e.PropertyName == nameof(Config.AutoPickConfig.CanHuaBuYingEnabled))
+            {
+                // 如果开启了璨花捕影，关闭芳间巡游
+                if (Config.AutoPickConfig.CanHuaBuYingEnabled && Config.AutoPickConfig.FangJianXunYouEnabled)
+                {
+                    Config.AutoPickConfig.FangJianXunYouEnabled = false;
+                }
+            }
+            else if (e.PropertyName == nameof(Config.AutoPickConfig.FangJianXunYouEnabled))
+            {
+                // 如果开启了芳间巡游，关闭璨花捕影
+                if (Config.AutoPickConfig.FangJianXunYouEnabled && Config.AutoPickConfig.CanHuaBuYingEnabled)
+                {
+                    Config.AutoPickConfig.CanHuaBuYingEnabled = false;
+                }
+            }
+        };
     }
 
     [RelayCommand]

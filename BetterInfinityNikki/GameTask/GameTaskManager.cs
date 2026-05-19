@@ -1,5 +1,6 @@
 using BetterInfinityNikki.Core.Recognition.OpenCv;
 using BetterInfinityNikki.GameTask.AutoPick;
+using BetterInfinityNikki.GameTask.AutoSkip;
 using BetterInfinityNikki.GameTask.GameLoading;
 using BetterInfinityNikki.GameTask.GameLoading.Assets;
 using BetterInfinityNikki.GameTask.Model;
@@ -10,6 +11,9 @@ using System.IO;
 using System.Linq;
 using BetterInfinityNikki.Core.Config;
 using BetterInfinityNikki.GameTask.AutoPick.Assets;
+using BetterInfinityNikki.GameTask.AutoSkip.Assets;
+using BetterInfinityNikki.GameTask.InsectCatching;
+using BetterInfinityNikki.GameTask.InsectCatching.Assets;
 using BetterInfinityNikki.View.Drawable;
 
 namespace BetterInfinityNikki.GameTask;
@@ -35,6 +39,12 @@ internal class GameTaskManager
 
         // 添加自动拾取触发器
         TriggerDictionary.TryAdd("AutoPick", new AutoPickTrigger());
+
+        // 添加自动剧情触发器
+        TriggerDictionary.TryAdd("AutoSkip", new AutoSkipTrigger());
+
+        // 添加璨花捕影触发器
+        TriggerDictionary.TryAdd("InsectCatching", new InsectCatchingTrigger());
 
         return ConvertToTriggerList();
     }
@@ -84,6 +94,14 @@ internal class GameTaskManager
                 triggerName = "AutoPick";
                 trigger = new AutoPickTrigger();
                 break;
+            case "AutoSkip":
+                triggerName = "AutoSkip";
+                trigger = new AutoSkipTrigger();
+                break;
+            case "InsectCatching":
+                triggerName = "InsectCatching";
+                trigger = new InsectCatchingTrigger();
+                break;
         }
 
         if (triggerName == null || trigger == null)
@@ -100,6 +118,8 @@ internal class GameTaskManager
         {
             TriggerDictionary.GetValueOrDefault("GameLoading")?.Init();
             TriggerDictionary.GetValueOrDefault("AutoPick")?.Init();
+            TriggerDictionary.GetValueOrDefault("AutoSkip")?.Init();
+            TriggerDictionary.GetValueOrDefault("InsectCatching")?.Init();
             // 清理画布
             VisionContext.Instance().DrawContent.ClearAll();
         }
@@ -111,6 +131,8 @@ internal class GameTaskManager
     {
         GameLoadingAssets.DestroyInstance();
         AutoPickAssets.DestroyInstance();
+        AutoSkipAssets.DestroyInstance();
+        InsectCatchingAssets.DestroyInstance();
     }
 
     /// <summary>

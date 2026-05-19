@@ -32,7 +32,7 @@ public class GameLoadingAssets : BaseAssets<GameLoadingAssets>
                 CaptureRect.Height - CaptureRect.Height / 2  // 高度: 屏幕高度的 1/2（下半部分）
             ),
             Threshold = 0.7,
-            DrawOnWindow = true
+            DrawOnWindow = false,
         }.InitTemplate();
 
         // 初始化"美鸭梨"菜单按钮识别
@@ -42,7 +42,7 @@ public class GameLoadingAssets : BaseAssets<GameLoadingAssets>
             RecognitionType = RecognitionTypes.TemplateMatch,
             TemplateImageMat = GameTaskManager.LoadAssetImage("GameLoading", "meiyali_menu.png"),
             RegionOfInterest = new Rect(0, 0, CaptureRect.Width / 4, CaptureRect.Height / 4), // 左上角 1/4×1/4
-            DrawOnWindow = true
+            DrawOnWindow = false
         }.InitTemplate();
     }
 }

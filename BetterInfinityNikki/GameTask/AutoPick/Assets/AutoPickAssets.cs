@@ -27,48 +27,14 @@ public class AutoPickAssets : BaseAssets<AutoPickAssets>
             RecognitionType = RecognitionTypes.TemplateMatch,
             TemplateImageMat = GameTaskManager.LoadAssetImage("AutoPick", "F.png"),
             RegionOfInterest = new Rect(
-                (int)(CaptureRect.Width * 0.25),   // X: 从25%位置开始
-                (int)(CaptureRect.Height * 0.25),  // Y: 从25%位置开始
-                (int)(CaptureRect.Width * 0.5),    // Width: 宽度为50%
-                (int)(CaptureRect.Height * 0.5)    // Height: 高度为50%
+                (int)(CaptureRect.Width * 0.25), // X: 从25%位置开始
+                (int)(CaptureRect.Height * 0.25), // Y: 从25%位置开始
+                (int)(CaptureRect.Width * 0.5), // Width: 宽度为50%
+                (int)(CaptureRect.Height * 0.5) // Height: 高度为50%
             ),
-            Threshold = 0.5,  // 降低阈值以提高匹配率
-            DrawOnWindow = true
+            Threshold = 0.5, // 降低阈值以提高匹配率
+            DrawOnWindow = false
         }.InitTemplate();
-
-        try
-        {
-            ChatIconRo = new RecognitionObject
-            {
-                Name = "ChatIcon",
-                RecognitionType = RecognitionTypes.TemplateMatch,
-                TemplateImageMat = GameTaskManager.LoadAssetImage("AutoSkip", "icon_option.png"),
-                DrawOnWindow = false,
-                DrawOnWindowPen = new Pen(Color.Chocolate, 2)
-            }.InitTemplate();
-        }
-        catch (FileNotFoundException)
-        {
-            _logger.LogWarning("未找到聊天气泡图标素材，将跳过该图标的识别");
-            ChatIconRo = new RecognitionObject { Name = "ChatIcon" };
-        }
-        
-        try
-        {
-            SettingsIconRo = new RecognitionObject
-            {
-                Name = "SettingsIcon",
-                RecognitionType = RecognitionTypes.TemplateMatch,
-                TemplateImageMat = GameTaskManager.LoadAssetImage("AutoPick", "icon_settings.png"),
-                DrawOnWindow = false,
-                DrawOnWindowPen = new Pen(Color.Chocolate, 2)
-            }.InitTemplate();
-        }
-        catch (FileNotFoundException)
-        {
-            _logger.LogWarning("未找到设置图标素材，将跳过该图标的识别");
-            SettingsIconRo = new RecognitionObject { Name = "SettingsIcon" };
-        }
 
         PickRo = FRo;
         var keyName = TaskContext.Instance().Config.AutoPickConfig.PickKey;
@@ -102,10 +68,10 @@ public class AutoPickAssets : BaseAssets<AutoPickAssets>
             RecognitionType = RecognitionTypes.TemplateMatch,
             TemplateImageMat = GameTaskManager.LoadAssetImage("AutoPick", key + ".png"),
             RegionOfInterest = new Rect(
-                (int)(CaptureRect.Width * 0.25),   // X: 从25%位置开始
-                (int)(CaptureRect.Height * 0.25),  // Y: 从25%位置开始
-                (int)(CaptureRect.Width * 0.5),    // Width: 宽度为50%
-                (int)(CaptureRect.Height * 0.5)    // Height: 高度为50%
+                (int)(CaptureRect.Width * 0.25), // X: 从25%位置开始
+                (int)(CaptureRect.Height * 0.25), // Y: 从25%位置开始
+                (int)(CaptureRect.Width * 0.5), // Width: 宽度为50%
+                (int)(CaptureRect.Height * 0.5) // Height: 高度为50%
             ),
             DrawOnWindow = false
         }.InitTemplate();

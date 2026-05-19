@@ -1,5 +1,7 @@
 using System.Text.Json.Serialization;
 using System.Windows.Input;
+using BetterInfinityNikki.GameTask.AutoPick;
+using BetterInfinityNikki.GameTask.AutoSkip;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Fischless.GameCapture;
 

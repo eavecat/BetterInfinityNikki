@@ -1,7 +1,7 @@
 using BetterInfinityNikki.GameTask.AutoPick;
 using CommunityToolkit.Mvvm.ComponentModel;
 
-namespace BetterInfinityNikki.Core.Config;
+namespace BetterInfinityNikki.GameTask.AutoPick;
 
 /// <summary>
 /// 自动拾取配置
@@ -63,4 +63,10 @@ public partial class AutoPickConfig : ObservableObject
     /// </summary>
     [ObservableProperty]
     private bool _FangJianXunYouEnabled = false;
+
+    /// <summary>
+    /// 璨花捕影启用状态（自动捕虫）
+    /// </summary>
+    [ObservableProperty]
+    private bool _CanHuaBuYingEnabled = false;
 }

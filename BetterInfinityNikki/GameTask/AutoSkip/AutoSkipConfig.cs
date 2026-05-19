@@ -1,6 +1,6 @@
 using CommunityToolkit.Mvvm.ComponentModel;
 
-namespace BetterInfinityNikki.Core.Config;
+namespace BetterInfinityNikki.GameTask.AutoSkip;
 
 /// <summary>
 /// 自动剧情配置

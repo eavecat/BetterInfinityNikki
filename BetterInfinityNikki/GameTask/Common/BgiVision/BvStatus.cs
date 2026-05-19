@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Text.RegularExpressions;
 using System.Threading;
 using BetterInfinityNikki.Core.Recognition;
+using BetterInfinityNikki.GameTask.AutoSkip.Assets;
 using BetterInfinityNikki.GameTask.Common.Element.Assets;
 using BetterInfinityNikki.GameTask.Model.Area;
 using OpenCvSharp;
@@ -326,9 +327,8 @@ public static partial class Bv
     /// <returns></returns>
     public static bool IsInTalkUi(ImageRegion captureRa)
     {
-        // using var ra = captureRa.Find(AutoSkipAssets.Instance.DisabledUiButtonRo);
-        // return ra.IsExist();
-        return false;
+        using var ra = captureRa.Find(AutoSkipAssets.Instance.PlotPlaybackRo);
+        return ra.IsExist();
     }
 
     /// <summary>

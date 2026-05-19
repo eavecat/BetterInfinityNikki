@@ -23,6 +23,9 @@ public partial class AutoPickTrigger : ITaskTrigger
 
     private bool picking = false;
 
+    private DateTime _prevExecute = DateTime.MinValue;
+    private const int ExecuteIntervalMs = 200; // 执行间隔，避免过于频繁的识别
+
     private readonly AutoPickAssets _autoPickAssets;
 
     /// <summary>
@@ -155,7 +158,16 @@ public partial class AutoPickTrigger : ITaskTrigger
             return;
         }
 
+        if ((DateTime.Now - _prevExecute).TotalMilliseconds < ExecuteIntervalMs)
+        {
+            return;
+        }
+
+        _prevExecute = DateTime.Now;
         picking = true;
+
+        var config = TaskContext.Instance().Config.AutoPickConfig;
+
         using var foundRectArea = content.CaptureRectArea.Find(_pickRo);
 
         // 未匹配到拾取键
@@ -165,8 +177,7 @@ public partial class AutoPickTrigger : ITaskTrigger
             return;
         }
 
-        var config = TaskContext.Instance().Config.AutoPickConfig;
-        string itemName = "";
+        var itemName = "";
 
         // 如果启用了白名单或黑名单，则需要进行OCR识别
         if (config.WhiteListEnabled || config.BlackListEnabled)
@@ -219,13 +230,12 @@ public partial class AutoPickTrigger : ITaskTrigger
         // 如果没有启用黑白名单，或者物品不在黑名单中，则执行拾取
         Pick:
 
-        // 如果启用了芳间巡游，先点击右键触发范围采集
+        // 如果启用了芳间巡游，点击右键触发范围采集
         if (config.FangJianXunYouEnabled)
         {
             Simulation.SendInput.Mouse.RightButtonDown();
             Thread.Sleep(40);
             Simulation.SendInput.Mouse.RightButtonUp();
-            Thread.Sleep(100); // 等待范围采集动画
         }
         else
         {

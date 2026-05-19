@@ -1,13 +1,16 @@
 using BetterInfinityNikki.Core.Config;
+using BetterInfinityNikki.Core.Recognition.OpenCv;
 using BetterInfinityNikki.GameTask;
 using BetterInfinityNikki.Helpers;
 using BetterInfinityNikki.Helpers.DpiAwareness;
 using BetterInfinityNikki.ViewModel;
+using BetterInfinityNikki.View.Drawable;
 using Microsoft.Extensions.Logging;
 using Serilog.Sinks.RichTextBox.Abstraction;
 using System;
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Documents;
@@ -291,6 +294,79 @@ public partial class MaskWindow : Window
         catch (OperationCanceledException)
         {
         }
+    }
+
+    protected override void OnRender(DrawingContext drawingContext)
+    {
+        try
+        {
+            var cnt = VisionContext.Instance().DrawContent.RectList.Count + VisionContext.Instance().DrawContent.LineList.Count + VisionContext.Instance().DrawContent.TextList.Count;
+            if (cnt == 0)
+            {
+                return;
+            }
+
+            var displayRecognitionResults = TaskContext.Instance().Config.MaskWindowConfig.DisplayRecognitionResultsOnMask;
+            if (!displayRecognitionResults)
+            {
+                return;
+            }
+
+            if (displayRecognitionResults)
+            {
+                foreach (var kv in VisionContext.Instance().DrawContent.RectList)
+                {
+                    foreach (var drawable in kv.Value)
+                    {
+                        if (!drawable.IsEmpty)
+                        {
+                            drawingContext.DrawRectangle(
+                                Brushes.Transparent,
+                                new Pen(new SolidColorBrush(drawable.Pen.Color.ToWindowsColor()), drawable.Pen.Width),
+                                drawable.Rect);
+                        }
+                    }
+                }
+
+                foreach (var kv in VisionContext.Instance().DrawContent.LineList)
+                {
+                    foreach (var drawable in kv.Value)
+                    {
+                        drawingContext.DrawLine(new Pen(new SolidColorBrush(drawable.Pen.Color.ToWindowsColor()), drawable.Pen.Width), drawable.P1, drawable.P2);
+                    }
+                }
+
+                foreach (var kv in VisionContext.Instance().DrawContent.TextList)
+                {
+                    var systemInfo = TaskContext.Instance().SystemInfo;
+                    var scaleTo1080 = systemInfo.ScaleTo1080PRatio;
+
+                    foreach (var drawable in kv.Value)
+                    {
+                        if (!drawable.IsEmpty)
+                        {
+                            var pixelsPerDip = VisualTreeHelper.GetDpi(this).PixelsPerDip;
+                            var renderPoint = new Point(drawable.Point.X / pixelsPerDip, drawable.Point.Y / pixelsPerDip);
+
+                            double defaultFontSize = (36 * scaleTo1080) / pixelsPerDip;
+                            var typeface = new Typeface("Microsoft YaHei");
+                            drawingContext.DrawText(new FormattedText(drawable.Text,
+                                CultureInfo.GetCultureInfo("zh-cn"),
+                                FlowDirection.LeftToRight,
+                                typeface,
+                                defaultFontSize, Brushes.Black, pixelsPerDip), renderPoint);
+                        }
+                    }
+                }
+            }
+
+        }
+        catch (Exception e)
+        {
+            Debug.WriteLine(e);
+        }
+
+        base.OnRender(drawingContext);
     }
 
     public RichTextBox LogBox => LogTextBox;
