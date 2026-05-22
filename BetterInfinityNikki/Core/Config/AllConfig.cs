@@ -2,6 +2,7 @@ using System.Text.Json.Serialization;
 using System.Windows.Input;
 using BetterInfinityNikki.GameTask.AutoPick;
 using BetterInfinityNikki.GameTask.AutoSkip;
+using BetterInfinityNikki.GameTask.AutoFishing;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Fischless.GameCapture;
 
@@ -55,6 +56,11 @@ public partial class AllConfig : ObservableObject
     public AutoSkipConfig AutoSkipConfig { get; set; } = new();
     
     /// <summary>
+    /// 自动钓鱼配置
+    /// </summary>
+    public AutoFishingConfig AutoFishingConfig { get; set; } = new();
+    
+    /// <summary>
     /// 窗口捕获的方式
     /// </summary>
     [ObservableProperty]
@@ -80,6 +86,7 @@ public partial class AllConfig : ObservableObject
         MaskWindowConfig.PropertyChanged += OnAnyPropertyChanged;
         AutoPickConfig.PropertyChanged += OnAnyPropertyChanged;
         AutoSkipConfig.PropertyChanged += OnAnyPropertyChanged;
+        AutoFishingConfig.PropertyChanged += OnAnyPropertyChanged;
     }
 
     public void OnAnyPropertyChanged(object? sender, EventArgs args)

@@ -14,6 +14,8 @@ using BetterInfinityNikki.GameTask.AutoPick.Assets;
 using BetterInfinityNikki.GameTask.AutoSkip.Assets;
 using BetterInfinityNikki.GameTask.InsectCatching;
 using BetterInfinityNikki.GameTask.InsectCatching.Assets;
+using BetterInfinityNikki.GameTask.AutoFishing;
+using BetterInfinityNikki.GameTask.AutoFishing.Assets;
 using BetterInfinityNikki.View.Drawable;
 
 namespace BetterInfinityNikki.GameTask;
@@ -45,6 +47,9 @@ internal class GameTaskManager
 
         // 添加璨花捕影触发器
         TriggerDictionary.TryAdd("InsectCatching", new InsectCatchingTrigger());
+
+        // 添加自动钓鱼触发器
+        TriggerDictionary.TryAdd("AutoFishing", new AutoFishingTrigger());
 
         return ConvertToTriggerList();
     }
@@ -102,6 +107,10 @@ internal class GameTaskManager
                 triggerName = "InsectCatching";
                 trigger = new InsectCatchingTrigger();
                 break;
+            case "AutoFishing":
+                triggerName = "AutoFishing";
+                trigger = new AutoFishingTrigger();
+                break;
         }
 
         if (triggerName == null || trigger == null)
@@ -120,6 +129,7 @@ internal class GameTaskManager
             TriggerDictionary.GetValueOrDefault("AutoPick")?.Init();
             TriggerDictionary.GetValueOrDefault("AutoSkip")?.Init();
             TriggerDictionary.GetValueOrDefault("InsectCatching")?.Init();
+            TriggerDictionary.GetValueOrDefault("AutoFishing")?.Init();
             // 清理画布
             VisionContext.Instance().DrawContent.ClearAll();
         }
@@ -133,6 +143,7 @@ internal class GameTaskManager
         AutoPickAssets.DestroyInstance();
         AutoSkipAssets.DestroyInstance();
         InsectCatchingAssets.DestroyInstance();
+        AutoFishingAssets.DestroyInstance();
     }
 
     /// <summary>

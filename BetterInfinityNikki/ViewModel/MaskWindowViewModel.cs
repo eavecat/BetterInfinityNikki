@@ -71,6 +71,10 @@ public partial class MaskWindowViewModel : ObservableObject
             // 添加自动剧情状态（与 AutoSkipConfig.Enabled 绑定）
             var autoSkipItem = new StatusItem("剧情", SymbolRegular.Chat24, Config.AutoSkipConfig, "Enabled");
             StatusList.Add(autoSkipItem);
+
+            // 添加自动钓鱼状态（与 AutoFishingConfig.Enabled 绑定）
+            var autoFishingItem = new StatusItem("钓鱼", SymbolRegular.FoodFish24, Config.AutoFishingConfig, "Enabled");
+            StatusList.Add(autoFishingItem);
         }
     }
 
