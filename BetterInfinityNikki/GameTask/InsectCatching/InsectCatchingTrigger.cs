@@ -120,9 +120,6 @@ public partial class InsectCatchingTrigger : ITaskTrigger
                 Simulation.SendInput.Mouse.RightButtonDown();
                 Thread.Sleep(40);
                 Simulation.SendInput.Mouse.RightButtonUp();
-
-                // 等待捕虫动画完成
-                Thread.Sleep(500);
             }
         }
         catch (Exception ex)

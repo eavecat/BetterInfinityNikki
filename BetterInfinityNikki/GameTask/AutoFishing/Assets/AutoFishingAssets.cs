@@ -15,6 +15,11 @@ public class AutoFishingAssets : BaseAssets<AutoFishingAssets>
     public RecognitionObject CancelFishingRo;
 
     /// <summary>
+    /// 收竿按钮（等待鱼上钩时显示）
+    /// </summary>
+    public RecognitionObject ReelRodRo;
+
+    /// <summary>
     /// 提竿按钮（鱼上钩时显示）
     /// </summary>
     public RecognitionObject RaiseRodRo;
@@ -56,12 +61,27 @@ public class AutoFishingAssets : BaseAssets<AutoFishingAssets>
                 cancelHeight
             ),
             Threshold = 0.7,
-            DrawOnWindow = true
+            DrawOnWindow = false
         }.InitTemplate();
 
         // 2. 提竿按钮 - 宽35%，高20%
-        var raiseWidth = (int)(CaptureRect.Width * 0.40);
+        var raiseWidth = (int)(CaptureRect.Width * 0.35);
         var raiseHeight = (int)(CaptureRect.Height * 0.2);
+        ReelRodRo = new RecognitionObject
+        {
+            Name = "ReelRodRo",
+            RecognitionType = RecognitionTypes.TemplateMatch,
+            TemplateImageMat = GameTaskManager.LoadAssetImage("AutoFishing", "reel_rod.png"),
+            RegionOfInterest = new Rect(
+                CaptureRect.Width - raiseWidth,
+                CaptureRect.Height - raiseHeight,
+                raiseWidth,
+                raiseHeight
+            ),
+            Threshold = 0.7,
+            DrawOnWindow = true
+        }.InitTemplate();
+        
         RaiseRodRo = new RecognitionObject
         {
             Name = "RaiseRod",
@@ -74,10 +94,10 @@ public class AutoFishingAssets : BaseAssets<AutoFishingAssets>
                 raiseHeight
             ),
             Threshold = 0.6,
-            DrawOnWindow = true
+            DrawOnWindow = false
         }.InitTemplate();
 
-        // 3. 拉扯鱼线提竿按钮 - 宽35%，高20%
+        // 3. 拉扯鱼线按钮 - 宽35%，高20%
         PullFishingLineRo = new RecognitionObject
         {
             Name = "PullFishingLine",
@@ -90,7 +110,7 @@ public class AutoFishingAssets : BaseAssets<AutoFishingAssets>
                 raiseHeight
             ),
             Threshold = 0.7,
-            DrawOnWindow = true
+            DrawOnWindow = false
         }.InitTemplate();
 
         // 4. 收线按钮 - 宽35%，高20%
@@ -123,8 +143,8 @@ public class AutoFishingAssets : BaseAssets<AutoFishingAssets>
                 skipWidth,
                 skipHeight
             ),
-            Threshold = 0.7,
-            DrawOnWindow = true
+            Threshold = 0.5,
+            DrawOnWindow = false
         }.InitTemplate();
     }
 }

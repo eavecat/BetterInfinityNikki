@@ -21,10 +21,10 @@ public partial class AutoPickTrigger : ITaskTrigger
     public int Priority => 30;
     public bool IsExclusive => false;
 
-    private bool picking = false;
+    private bool _picking;
 
     private DateTime _prevExecute = DateTime.MinValue;
-    private const int ExecuteIntervalMs = 200; // 执行间隔，避免过于频繁的识别
+    private const int ExecuteIntervalMs = 100; // 执行间隔，避免过于频繁的识别
 
     private readonly AutoPickAssets _autoPickAssets;
 
@@ -43,12 +43,9 @@ public partial class AutoPickTrigger : ITaskTrigger
     /// </summary>
     private HashSet<string> _whiteList = [];
 
-    private RecognitionObject _pickRo;
-
     public AutoPickTrigger()
     {
         _autoPickAssets = AutoPickAssets.Instance;
-        _pickRo = _autoPickAssets.PickRo;
     }
 
     public void Init()
@@ -144,7 +141,7 @@ public partial class AutoPickTrigger : ITaskTrigger
 
     public void OnCapture(CaptureContent content)
     {
-        if (picking) return;
+        if (_picking) return;
         // 检查停止计数器
         while (RunnerContext.Instance.AutoPickTriggerStopCount > 0)
         {
@@ -164,16 +161,16 @@ public partial class AutoPickTrigger : ITaskTrigger
         }
 
         _prevExecute = DateTime.Now;
-        picking = true;
+        _picking = true;
 
         var config = TaskContext.Instance().Config.AutoPickConfig;
 
-        using var foundRectArea = content.CaptureRectArea.Find(_pickRo);
+        var foundRectArea = content.CaptureRectArea.Find(_autoPickAssets.PickRo);
 
         // 未匹配到拾取键
         if (foundRectArea.IsEmpty())
         {
-            picking = false;
+            _picking = false;
             return;
         }
 
@@ -191,7 +188,7 @@ public partial class AutoPickTrigger : ITaskTrigger
             // 未识别到结果
             if (string.IsNullOrEmpty(itemName))
             {
-                picking = false;
+                _picking = false;
                 return;
             }
 
@@ -207,14 +204,14 @@ public partial class AutoPickTrigger : ITaskTrigger
                 if (_blackList.Contains(itemName))
                 {
                     _logger.LogDebug("自动拾取: 精确黑名单匹配，跳过拾取: {ItemName}", itemName);
-                    picking = false;
+                    _picking = false;
                     return;
                 }
 
                 if (_fuzzyBlackList.Count > 0 && _fuzzyBlackList.Any(item => itemName.Contains(item)))
                 {
                     _logger.LogDebug("自动拾取: 模糊黑名单匹配，跳过拾取: {itemName}", itemName);
-                    picking = false;
+                    _picking = false;
                     return;
                 }
             }
@@ -230,8 +227,8 @@ public partial class AutoPickTrigger : ITaskTrigger
         // 如果没有启用黑白名单，或者物品不在黑名单中，则执行拾取
         Pick:
 
-        // 如果启用了芳间巡游，点击右键触发范围采集
-        if (config.FangJianXunYouEnabled)
+        // 如果启用且配置了芳间巡游，点击右键触发范围采集
+        if (config.FangJianXunYouEnabled && !content.CaptureRectArea.Find(_autoPickAssets.FangJianXunYouRo).IsEmpty())
         {
             Simulation.SendInput.Mouse.RightButtonDown();
             Thread.Sleep(40);
@@ -246,7 +243,7 @@ public partial class AutoPickTrigger : ITaskTrigger
         }
 
         LogPick(content, itemName);
-        picking = false;
+        _picking = false;
     }
 
     /// <summary>
@@ -260,7 +257,7 @@ public partial class AutoPickTrigger : ITaskTrigger
 
             // 计算识别区域：拾取键上方，高度50px，宽度200px
             var textRect = new Rect(
-                pickKeyArea.X,
+                pickKeyArea.X - 40,
                 pickKeyArea.Y - 50,
                 200,
                 50

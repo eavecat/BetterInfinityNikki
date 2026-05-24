@@ -24,7 +24,7 @@ public class ElementAssets : BaseAssets<ElementAssets>
     public Lazy<RecognitionObject> BtnExitDoor;
     public RecognitionObject InDomainRo;
 
-    public RecognitionObject PaimonMenuRo;
+    public RecognitionObject MeiyaliMenuRo;
     public RecognitionObject InventoryRo;
     public RecognitionObject BlueTrackPoint;
 
@@ -37,67 +37,8 @@ public class ElementAssets : BaseAssets<ElementAssets>
     public RecognitionObject ChatBackButtonRo;
 
     public RecognitionObject PartyBtnChooseView;
-    public RecognitionObject PartyBtnDelete;
-
-    public RecognitionObject CraftCondensedResin;
-    public RecognitionObject CondensedResinCount;
-    public RecognitionObject fragileResinCount;
     public RecognitionObject Keyreduce;
     public RecognitionObject Keyincrease;
-
-    public RecognitionObject BagWeaponUnchecked;
-    public RecognitionObject BagWeaponChecked;
-    public RecognitionObject BagArtifactUnchecked;
-    public RecognitionObject BagArtifactChecked;
-    public RecognitionObject BagCharacterDevelopmentItemUnchecked;
-    public RecognitionObject BagCharacterDevelopmentItemChecked;
-    public RecognitionObject BagFoodUnchecked;
-    public RecognitionObject BagFoodChecked;
-    public RecognitionObject BagMaterialUnchecked;
-    public RecognitionObject BagMaterialChecked;
-    public RecognitionObject BagGadgetUnchecked;
-    public RecognitionObject BagGadgetChecked;
-    public RecognitionObject BagQuestUnchecked;
-    public RecognitionObject BagQuestChecked;
-    public RecognitionObject BagPreciousItemUnchecked;
-    public RecognitionObject BagPreciousItemChecked;
-    public RecognitionObject BagFurnishingUnchecked;
-    public RecognitionObject BagFurnishingChecked;
-    public RecognitionObject BtnArtifactSalvage;
-    public RecognitionObject BtnArtifactSalvageConfirm;
-
-    public RecognitionObject BtnClaimEncounterPointsRewards;
-    public RecognitionObject PrimogemRo;
-
-    public RecognitionObject EscMailReward;
-    public RecognitionObject CollectRo;
-
-    public RecognitionObject PageCloseWhiteRo;
-
-    public RecognitionObject SereniteaPotHomeRo;
-    public RecognitionObject TeleportSereniteaPotHomeRo;
-    public RecognitionObject AYuanIconRo;
-    public RecognitionObject SereniteaPotLoveRo;
-    public RecognitionObject SereniteaPotMoneyRo;
-    public RecognitionObject SereniteapotPageClose;
-    public RecognitionObject SereniteapotShopNumberBtn;
-
-    public RecognitionObject AYuanClothRo;
-    public RecognitionObject AYuanresinRo;
-    public RecognitionObject SereniteapotExpBookRo;
-    public RecognitionObject SereniteapotExpBookSmallRo;
-    public RecognitionObject AYuanMagicmineralprecisionRo;
-    public RecognitionObject AYuanMOlaRo;
-    public RecognitionObject AYuanExpBottleBigRo;
-    public RecognitionObject AYuanExpBottleSmallRo;
-    public RecognitionObject FingerIconRo;
-
-    public RecognitionObject LeylineDisorderIconRo;
-
-    public RecognitionObject EscDown;
-    public RecognitionObject EscWonderlandHome;
-    public RecognitionObject WonderlandEnter;
-    public RecognitionObject WonderlandClose;
 
     public RecognitionObject Index1;
     public RecognitionObject Index2;
@@ -121,6 +62,13 @@ public class ElementAssets : BaseAssets<ElementAssets>
 
     private void Initialization(ISystemInfo systemInfo)
     {
-        
+        MeiyaliMenuRo = new RecognitionObject
+        {
+            Name = "MeiyaliMenu",
+            RecognitionType = RecognitionTypes.TemplateMatch,
+            TemplateImageMat = GameTaskManager.LoadAssetImage(@"Common\Element", "meiyali_menu.png", systemInfo),
+            RegionOfInterest = new Rect(0, 0, CaptureRect.Width / 4, CaptureRect.Height / 4),
+            DrawOnWindow = false
+        }.InitTemplate();
     }
 }

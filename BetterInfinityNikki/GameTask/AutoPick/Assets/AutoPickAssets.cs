@@ -13,8 +13,7 @@ public class AutoPickAssets : BaseAssets<AutoPickAssets>
     private readonly ILogger<AutoPickAssets> _logger = App.GetLogger<AutoPickAssets>();
 
     public RecognitionObject FRo;
-    public RecognitionObject ChatIconRo;
-    public RecognitionObject SettingsIconRo;
+    public RecognitionObject FangJianXunYouRo;
 
     public User32.VK PickVk = User32.VK.VK_F; // VK_F
     public RecognitionObject PickRo;
@@ -32,7 +31,22 @@ public class AutoPickAssets : BaseAssets<AutoPickAssets>
                 (int)(CaptureRect.Width * 0.5), // Width: 宽度为50%
                 (int)(CaptureRect.Height * 0.5) // Height: 高度为50%
             ),
-            Threshold = 0.5, // 降低阈值以提高匹配率
+            Threshold = 0.7,
+            DrawOnWindow = false
+        }.InitTemplate();
+
+        FangJianXunYouRo = new RecognitionObject
+        {
+            Name = "FangJianXunYou",
+            RecognitionType = RecognitionTypes.TemplateMatch,
+            TemplateImageMat = GameTaskManager.LoadAssetImage("AutoPick", "fang_jian_xun_you.png"),
+            RegionOfInterest = new Rect(
+                (int)(CaptureRect.Width - CaptureRect.Width * 0.3),
+                (int)(CaptureRect.Height - CaptureRect.Height * 0.2),
+                (int)(CaptureRect.Width * 0.3),
+                (int)(CaptureRect.Height * 0.2)
+            ),
+            Threshold = 0.7, // 降低阈值以提高匹配率
             DrawOnWindow = false
         }.InitTemplate();
 

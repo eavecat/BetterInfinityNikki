@@ -1,8 +1,4 @@
 using BetterInfinityNikki.Core.Recognition;
-using BetterInfinityNikki.Core.Recognition.OpenCv;
-using BetterInfinityNikki.GameTask;
-using OpenCvSharp;
-using System;
 using OpenCvRect = OpenCvSharp.Rect;
 
 namespace BetterInfinityNikki.GameTask.InsectCatching.Assets;

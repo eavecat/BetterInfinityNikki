@@ -8,6 +8,7 @@ using Microsoft.Extensions.Logging;
 using OpenCvSharp;
 using System;
 using System.Diagnostics;
+using BetterInfinityNikki.GameTask.Common.Element.Assets;
 
 namespace BetterInfinityNikki.GameTask.GameLoading;
 
@@ -41,6 +42,7 @@ public class GameLoadingTrigger : ITaskTrigger
     public GameUiCategory SupportedGameUiCategory => GameUiCategory.Unknown;
 
     private readonly GameLoadingAssets _assets;
+    private readonly ElementAssets _elementAssets;
     private readonly GameStartConfig _config = TaskContext.Instance().Config.GameStartConfig;
     private static readonly ILogger<GameLoadingTrigger> _logger = App.GetLogger<GameLoadingTrigger>();
 
@@ -52,6 +54,7 @@ public class GameLoadingTrigger : ITaskTrigger
     {
         GameLoadingAssets.DestroyInstance();
         _assets = GameLoadingAssets.Instance;
+        _elementAssets = ElementAssets.Instance;
     }
 
     public void InnerSetEnabled(bool enabled)
@@ -180,7 +183,7 @@ public class GameLoadingTrigger : ITaskTrigger
     {
         try
         {
-            var meiyaliMenu = captureRectArea.Find(_assets.MeiyaliMenuRo);
+            var meiyaliMenu = captureRectArea.Find(_elementAssets.MeiyaliMenuRo);
             if (!meiyaliMenu.IsEmpty())
             {
                 _logger.LogDebug("检测到\"美鸭梨\"菜单按钮，确认在主界面");

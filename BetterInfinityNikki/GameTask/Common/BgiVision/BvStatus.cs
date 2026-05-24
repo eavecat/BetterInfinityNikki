@@ -68,7 +68,7 @@ public static partial class Bv
     /// <returns></returns>
     public static bool IsInMainUi(ImageRegion captureRa)
     {
-        using var ra = captureRa.Find(ElementAssets.Instance.PaimonMenuRo);
+        using var ra = captureRa.Find(ElementAssets.Instance.MeiyaliMenuRo);
         return ra.IsExist() && !IsInRevivePrompt(captureRa);
     }
 

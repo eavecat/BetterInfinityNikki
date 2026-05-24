@@ -5,6 +5,7 @@ using Fischless.WindowsInput;
 using Microsoft.Extensions.Logging;
 using System;
 using System.Threading;
+using BetterInfinityNikki.GameTask.Common.Element.Assets;
 using BetterInfinityNikki.GameTask.GameLoading.Assets;
 using OpenCvSharp;
 using Vanara.PInvoke;
@@ -18,9 +19,9 @@ public class AutoFishingTrigger : ITaskTrigger
 {
     private readonly ILogger<AutoFishingTrigger> _logger = App.GetLogger<AutoFishingTrigger>();
     private readonly AutoFishingAssets _assets;
-    private readonly GameLoadingAssets _gameLoadingAssets;
+    private readonly ElementAssets _elementAssets;
     private readonly InputSimulator _input = Simulation.SendInput;
-    
+
     public string Name => "自动钓鱼";
     public bool IsEnabled { get; set; }
     public int Priority => 15;
@@ -28,156 +29,173 @@ public class AutoFishingTrigger : ITaskTrigger
     public bool IsBackgroundRunning => false;
 
     private DateTime _prevExecute = DateTime.MinValue;
-    private const int ExecuteInterval = 67; // 执行间隔（毫秒）
+    private const int ExecuteInterval = 120; // 执行间隔（毫秒）
 
     // 钓鱼状态机
     private enum FishingState
     {
-        Idle,               // 空闲状态
-        Fishing,            // 钓鱼中（已抛竿）
-        FishBite,           // 鱼上钩（需要提竿）
-        PullingLine,        // 拉扯鱼线
-        Reeling,            // 收线
-        Success             // 钓鱼成功（结算动画）
+        Idle, // 空闲状态
+        Fishing, // 钓鱼中（已抛竿）
+        FishBite, // 鱼上钩（需要提竿）
+        PullingLine, // 拉扯鱼线
+        Reeling, // 收线
+        Success, // 钓鱼成功（结算动画）
+        Unknow,
     }
 
     private FishingState _currentState = FishingState.Idle;
-    private DateTime _stateStartTime = DateTime.MinValue;
-    private bool _isPullingLeft = false; // 当前是否向左拉扯
-    private DateTime _lastPullDirectionChange = DateTime.MinValue;
-    private const int PullDirectionInterval = 500; // 拉扯方向切换间隔（毫秒）
-    private DateTime _lastReelClick = DateTime.MinValue;
-    private const int ReelClickInterval = 200; // 收线点击间隔（毫秒）
+    private FishingState _lastState = FishingState.Idle;
+    private int _unknowStateCount;
+    private bool _execing;
+
+    // 拉扯方向检测相关
+    private int _lastYellowCount; // 上次黄色像素数量
+    private bool _isPullingLeft; // 当前拉扯方向（true=左，false=右）
+    private DateTime _lastPullCheck = DateTime.MinValue; // 上次拉扯检测时间
+    private const int PullCheckInterval = 300; // 拉扯检测间隔（毫秒）
+    private bool _isKeyHeld; // 当前是否有按键被按住
 
     public AutoFishingTrigger()
     {
         _assets = AutoFishingAssets.Instance;
-        _gameLoadingAssets = GameLoadingAssets.Instance;
+        _elementAssets = ElementAssets.Instance;
     }
+
     public void Init()
     {
         IsEnabled = TaskContext.Instance().Config.AutoFishingConfig.Enabled;
         _currentState = FishingState.Idle;
-        
+
         _logger.LogInformation("自动钓鱼触发器初始化: IsEnabled={Enabled}", IsEnabled);
     }
 
     public void OnCapture(CaptureContent content)
     {
         // 检查触发器是否启用
-        if (!IsEnabled)
-        {
-            return;
-        }
+        if (!IsEnabled || _execing) return;
 
         // 执行间隔控制
-        if ((DateTime.Now - _prevExecute).TotalMilliseconds <= ExecuteInterval)
-        {
-            return;
-        }
+        if ((DateTime.Now - _prevExecute).TotalMilliseconds <= ExecuteInterval) return;
 
         _prevExecute = DateTime.Now;
+        _lastState = _currentState;
+        _execing = true;
 
-        try
-        {
-            ProcessFishingLogic(content.CaptureRectArea);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "自动钓鱼: 处理异常");
-        }
-    }
+        _currentState = GetFishingState(content);
 
-    /// <summary>
-    /// 处理钓鱼逻辑（状态机）
-    /// </summary>
-    private void ProcessFishingLogic(ImageRegion captureRectArea)
-    {
-        // 优先检测是否退出钓鱼（检测到美鸭梨菜单）
-        if (CheckExitFishing(captureRectArea))
+        if (_unknowStateCount > 3)
         {
-            return;
+            _currentState = FishingState.Idle;
+            _unknowStateCount = 0;
         }
 
         switch (_currentState)
         {
+            case FishingState.Unknow:
+                _unknowStateCount++;
+                break;
             case FishingState.Idle:
-                CheckEnterFishing(captureRectArea);
+                if (_lastState != FishingState.Idle)
+                {
+                    ReleaseAllKeys();
+                }
+
                 break;
             case FishingState.Fishing:
-                CheckFishBite(captureRectArea);
+                if (_lastState != _currentState)
+                {
+                    _logger.LogInformation("开始钓鱼");
+                }
+
                 break;
             case FishingState.FishBite:
-                HandleFishBite(captureRectArea);
+                if (_lastState != _currentState)
+                {
+                    _logger.LogInformation("鱼上钩啦，开始提竿");
+                }
+
+                HandleFishBite();
                 break;
             case FishingState.PullingLine:
-                HandlePullingLine(captureRectArea);
+                if (_lastState != _currentState)
+                {
+                    _logger.LogInformation("拉扯中");
+                }
+
+                HandlePullingLine(content.CaptureRectArea);
                 break;
             case FishingState.Reeling:
-                HandleReeling(captureRectArea);
+                if (_lastState != _currentState)
+                {
+                    _logger.LogInformation("收线中");
+                }
+
+                HandleReeling();
                 break;
             case FishingState.Success:
-                HandleSuccess(captureRectArea);
+                if (_lastState != _currentState)
+                {
+                    HandleSuccess();
+                    ReleaseAllKeys();
+                }
+
                 break;
         }
+
+        _execing = false;
     }
 
-    /// <summary>
-    /// 检测是否进入钓鱼状态（检测到取消钓鱼按钮）
-    /// </summary>
-    private void CheckEnterFishing(ImageRegion captureRectArea)
+    private FishingState GetFishingState(CaptureContent content)
     {
-        var cancelArea = captureRectArea.Find(_assets.CancelFishingRo);
-        if (!cancelArea.IsEmpty())
+        var meiyaliMenu = content.CaptureRectArea.Find(_elementAssets.MeiyaliMenuRo);
+        if (!meiyaliMenu.IsEmpty())
         {
-            _logger.LogInformation("🎣 检测到钓鱼界面，进入钓鱼状态");
-            _currentState = FishingState.Fishing;
-            _stateStartTime = DateTime.Now;
+            return FishingState.Idle;
         }
+
+        var cancelArea = content.CaptureRectArea.Find(_assets.CancelFishingRo);
+        var reelRodArea = content.CaptureRectArea.Find(_assets.ReelRodRo);
+        if (!cancelArea.IsEmpty() && !reelRodArea.IsEmpty())
+        {
+            return FishingState.Fishing;
+        }
+
+        var raiseRodArea = content.CaptureRectArea.Find(_assets.RaiseRodRo);
+        if (!cancelArea.IsEmpty() && !raiseRodArea.IsEmpty())
+        {
+            return FishingState.FishBite;
+        }
+
+        var pullArea = content.CaptureRectArea.Find(_assets.PullFishingLineRo);
+        if (!cancelArea.IsEmpty() && !pullArea.IsEmpty())
+        {
+            return FishingState.PullingLine;
+        }
+
+        var reelArea = content.CaptureRectArea.Find(_assets.ReelLineRo);
+        if (!cancelArea.IsEmpty() && !reelArea.IsEmpty())
+        {
+            return FishingState.Reeling;
+        }
+
+        var skipArea = content.CaptureRectArea.Find(_assets.SkipAnimRo);
+        if (!skipArea.IsEmpty() && (_lastState == FishingState.Reeling || _lastState == FishingState.PullingLine))
+        {
+            return FishingState.Success;
+        }
+
+        return FishingState.Unknow;
     }
 
-    /// <summary>
-    /// 检测鱼是否上钩（检测到提竿按钮）
-    /// </summary>
-    private void CheckFishBite(ImageRegion captureRectArea)
-    {
-        var raiseRodArea = captureRectArea.Find(_assets.RaiseRodRo);
-        if (!raiseRodArea.IsEmpty())
-        {
-            _logger.LogInformation("🐟 鱼上钩了！");
-            _currentState = FishingState.FishBite;
-            _stateStartTime = DateTime.Now;
-            
-            // 自动提竿
-            _input.Keyboard.KeyDown(User32.VK.VK_S);
-            Thread.Sleep(50);
-            _input.Keyboard.KeyUp(User32.VK.VK_S);
-            _logger.LogInformation("⬆️ 自动提竿");
-        }
-    }
 
     /// <summary>
-    /// 处理鱼上钩状态（等待进入拉扯阶段）
+    /// 鱼上钩，提竿
     /// </summary>
-    private void HandleFishBite(ImageRegion captureRectArea)
+    private void HandleFishBite()
     {
-        // 检测是否进入拉扯阶段
-        var pullArea = captureRectArea.Find(_assets.PullFishingLineRo);
-        if (!pullArea.IsEmpty())
-        {
-            _logger.LogInformation("🎯 进入拉扯鱼线阶段");
-            _currentState = FishingState.PullingLine;
-            _stateStartTime = DateTime.Now;
-            _isPullingLeft = false;
-            _lastPullDirectionChange = DateTime.Now;
-        }
-        
-        // 如果长时间没有进入拉扯阶段，可能提竿失败，返回钓鱼状态
-        if ((DateTime.Now - _stateStartTime).TotalSeconds > 3)
-        {
-            _logger.LogWarning("⚠️ 提竿后未进入拉扯阶段，返回钓鱼状态");
-            _currentState = FishingState.Fishing;
-        }
+        _input.Keyboard.KeyDown(User32.VK.VK_S);
+        Thread.Sleep(50);
+        _input.Keyboard.KeyUp(User32.VK.VK_S);
     }
 
     /// <summary>
@@ -185,81 +203,92 @@ public class AutoFishingTrigger : ITaskTrigger
     /// </summary>
     private void HandlePullingLine(ImageRegion captureRectArea)
     {
-        // 检测是否还在拉扯阶段
-        var pullArea = captureRectArea.Find(_assets.PullFishingLineRo);
-        if (pullArea.IsEmpty())
+        // 检查上次拉扯时间间隔
+        if ((DateTime.Now - _lastPullCheck).TotalMilliseconds < PullCheckInterval) return;
+        // 获取当前黄色像素总数
+        var currentYellowCount = GetYellowPixelCount(captureRectArea);
+
+        // 如果没有按键被按住，开始新的拉扯
+        if (!_isKeyHeld)
         {
-            // 拉扯结束，检测是否进入收线阶段
-            var reelArea = captureRectArea.Find(_assets.ReelLineRo);
-            if (!reelArea.IsEmpty())
-            {
-                _logger.LogInformation("✅ 拉扯完成，进入收线阶段");
-                _currentState = FishingState.Reeling;
-                _stateStartTime = DateTime.Now;
-            }
-            else
-            {
-                // 可能钓鱼失败或中断
-                _logger.LogWarning("⚠️ 拉扯阶段异常结束");
-                ResetToFishingOrIdle(captureRectArea);
-            }
+            _lastYellowCount = currentYellowCount;
+            StartPulling();
             return;
         }
 
-        // 检测黄色圆形进度条，智能决定拉扯方向
-        var pullDirection = DetectPullDirection(captureRectArea);
-        
-        var now = DateTime.Now;
-        if ((now - _lastPullDirectionChange).TotalMilliseconds >= PullDirectionInterval)
+        // 判断方向是否正确：黄色减少 > 5 像素
+        if (_lastYellowCount - currentYellowCount > 5)
         {
-            _lastPullDirectionChange = now;
-            
-            if (pullDirection == PullDirection.Left)
+            // 方向正确，继续按住
+            _lastYellowCount = currentYellowCount;
+
+            if (currentYellowCount == 0)
             {
-                _input.Keyboard.KeyDown(Vanara.PInvoke.User32.VK.VK_A);
-                _input.Keyboard.KeyUp(Vanara.PInvoke.User32.VK.VK_D);
-                //_logger.LogDebug("⬅️ 向左拉扯");
+                // 黄色完全消失，拉扯完成
+                ReleaseCurrentKey();
             }
-            else if (pullDirection == PullDirection.Right)
-            {
-                _input.Keyboard.KeyDown(Vanara.PInvoke.User32.VK.VK_D);
-                _input.Keyboard.KeyUp(Vanara.PInvoke.User32.VK.VK_A);
-                //_logger.LogDebug("➡️ 向右拉扯");
-            }
-            else
-            {
-                // 无法判断方向，使用左右交替策略
-                _isPullingLeft = !_isPullingLeft;
-                if (_isPullingLeft)
-                {
-                    _input.Keyboard.KeyDown(Vanara.PInvoke.User32.VK.VK_A);
-                    _input.Keyboard.KeyUp(Vanara.PInvoke.User32.VK.VK_D);
-                }
-                else
-                {
-                    _input.Keyboard.KeyDown(Vanara.PInvoke.User32.VK.VK_D);
-                    _input.Keyboard.KeyUp(Vanara.PInvoke.User32.VK.VK_A);
-                }
-            }
+        }
+        else
+        {
+            // 方向错误，黄色没有明显减少，切换方向
+            SwitchPullDirection(captureRectArea);
+            _lastYellowCount = currentYellowCount;
         }
     }
 
     /// <summary>
-    /// 拉扯方向枚举
+    /// 开始拉扯（先尝试向左）
     /// </summary>
-    private enum PullDirection
+    private void StartPulling()
     {
-        Unknown,
-        Left,
-        Right
+        _isPullingLeft = true; // 先尝试向左
+        PressCurrentKey();
     }
 
     /// <summary>
-    /// 检测拉扯方向（通过黄色圆形进度条）
-    /// 检测范围：中心宽60%，高40%
-    /// 黄色范围：RGB(255, 220, 165) - RGB(230, 250, 200)
+    /// 按下当前方向的键
     /// </summary>
-    private PullDirection DetectPullDirection(ImageRegion captureRectArea)
+    private void PressCurrentKey()
+    {
+        var key = _isPullingLeft ? User32.VK.VK_A : User32.VK.VK_D;
+        _input.Keyboard.KeyDown(key);
+        Thread.Sleep(50); // 确保按键生效
+        _isKeyHeld = true;
+    }
+
+    /// <summary>
+    /// 释放当前按住的按键
+    /// </summary>
+    private void ReleaseCurrentKey()
+    {
+        if (_isKeyHeld)
+        {
+            var key = _isPullingLeft ? User32.VK.VK_A : User32.VK.VK_D;
+            _input.Keyboard.KeyUp(key);
+            Thread.Sleep(30);
+            _isKeyHeld = false;
+        }
+    }
+
+    /// <summary>
+    /// 切换拉扯方向
+    /// </summary>
+    private void SwitchPullDirection(ImageRegion captureRectArea)
+    {
+        // 先抬起当前按住的键
+        ReleaseCurrentKey();
+
+        // 切换方向
+        _isPullingLeft = !_isPullingLeft;
+
+        // 按下新方向的键
+        PressCurrentKey();
+    }
+
+    /// <summary>
+    /// 获取黄色像素总数
+    /// </summary>
+    private int GetYellowPixelCount(ImageRegion captureRectArea)
     {
         try
         {
@@ -275,10 +304,10 @@ public class AutoFishingTrigger : ITaskTrigger
 
             // 裁剪中心区域
             using var roiMat = new Mat(srcMat, new OpenCvSharp.Rect(roiX, roiY, roiWidth, roiHeight));
-            
+
             if (roiMat.Empty())
             {
-                return PullDirection.Unknown;
+                return 0;
             }
 
             // 定义黄色范围 RGB(255, 220, 165) - RGB(230, 250, 200)
@@ -290,163 +319,54 @@ public class AutoFishingTrigger : ITaskTrigger
             using var mask = new Mat();
             Cv2.InRange(roiMat, lowerYellow, upperYellow, mask);
 
-            // 统计左半部分和右半部分的黄色像素数量
-            var leftRoi = new OpenCvSharp.Rect(0, 0, roiWidth / 2, roiHeight);
-            var rightRoi = new OpenCvSharp.Rect(roiWidth / 2, 0, roiWidth / 2, roiHeight);
-
-            using var leftMask = new Mat(mask, leftRoi);
-            using var rightMask = new Mat(mask, rightRoi);
-
-            var leftYellowCount = Cv2.CountNonZero(leftMask);
-            var rightYellowCount = Cv2.CountNonZero(rightMask);
-
-            // 如果黄色像素太少，无法判断
-            var totalYellow = leftYellowCount + rightYellowCount;
-            if (totalYellow < 100)
-            {
-                return PullDirection.Unknown;
-            }
-
-            // 黄色越多表示进度越低，应该往黄色多的方向拉扯
-            // 左边黄色多 -> 向左拉扯
-            // 右边黄色多 -> 向右拉扯
-            if (leftYellowCount > rightYellowCount * 1.2)
-            {
-                //_logger.LogDebug($"📊 黄色分布: 左={leftYellowCount}, 右={rightYellowCount} -> 向左");
-                return PullDirection.Left;
-            }
-            else if (rightYellowCount > leftYellowCount * 1.2)
-            {
-                //_logger.LogDebug($"📊 黄色分布: 左={leftYellowCount}, 右={rightYellowCount} -> 向右");
-                return PullDirection.Right;
-            }
-            else
-            {
-                return PullDirection.Unknown;
-            }
+            // 统计黄色像素数量
+            return Cv2.CountNonZero(mask);
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "检测拉扯方向时发生异常");
-            return PullDirection.Unknown;
+            _logger.LogWarning(ex, "获取黄色像素数量时发生异常");
+            return 0;
         }
     }
 
     /// <summary>
     /// 处理收线阶段
     /// </summary>
-    private void HandleReeling(ImageRegion captureRectArea)
+    private void HandleReeling()
     {
-        // 检测是否还在收线阶段
-        var reelArea = captureRectArea.Find(_assets.ReelLineRo);
-        if (reelArea.IsEmpty())
-        {
-            // 收线结束，检测是否成功
-            var skipArea = captureRectArea.Find(_assets.SkipAnimRo);
-            if (!skipArea.IsEmpty())
-            {
-                _logger.LogInformation("🎉 钓鱼成功！进入结算动画");
-                _currentState = FishingState.Success;
-                _stateStartTime = DateTime.Now;
-            }
-            else
-            {
-                // 可能回到拉扯阶段（继续钓）
-                var pullArea = captureRectArea.Find(_assets.PullFishingLineRo);
-                if (!pullArea.IsEmpty())
-                {
-                    _logger.LogInformation("🔄 收线完成，回到拉扯阶段");
-                    _currentState = FishingState.PullingLine;
-                    _stateStartTime = DateTime.Now;
-                }
-                else
-                {
-                    _logger.LogWarning("⚠️ 收线阶段异常结束");
-                    ResetToFishingOrIdle(captureRectArea);
-                }
-            }
-            return;
-        }
-
-        // 不断点击右键收线
-        var now = DateTime.Now;
-        if ((now - _lastReelClick).TotalMilliseconds >= ReelClickInterval)
-        {
-            _input.Mouse.RightButtonClick();
-            _lastReelClick = now;
-            //_logger.LogDebug("🖱️ 右键收线");
-        }
+        _input.Mouse.RightButtonDown();
+        Thread.Sleep(50);
+        _input.Mouse.RightButtonUp();
     }
 
     /// <summary>
     /// 处理成功状态（跳过动画）
     /// </summary>
-    private void HandleSuccess(ImageRegion captureRectArea)
+    private void HandleSuccess()
     {
-        // 检测跳过按钮
-        var skipArea = captureRectArea.Find(_assets.SkipAnimRo);
-        if (!skipArea.IsEmpty())
-        {
-            // 按F跳过动画
-            _input.Keyboard.KeyPress(Vanara.PInvoke.User32.VK.VK_F);
-            _logger.LogInformation("⏭️ 跳过结算动画");
-        }
-        
-        // 等待动画结束，返回钓鱼状态或空闲状态
-        if ((DateTime.Now - _stateStartTime).TotalSeconds > 2)
-        {
-            ResetToFishingOrIdle(captureRectArea);
-        }
+        _input.Keyboard.KeyDown(User32.VK.VK_F);
+        Thread.Sleep(50);
+        _input.Keyboard.KeyUp(User32.VK.VK_F);
     }
 
     /// <summary>
-    /// 重置到钓鱼状态或空闲状态
+    /// 释放所有可能按下的按键
     /// </summary>
-    private void ResetToFishingOrIdle(ImageRegion captureRectArea)
+    private void ReleaseAllKeys()
     {
-        var cancelArea = captureRectArea.Find(_assets.CancelFishingRo);
-        if (!cancelArea.IsEmpty())
-        {
-            _logger.LogInformation("🔄 返回钓鱼状态");
-            _currentState = FishingState.Fishing;
-        }
-        else
-        {
-            _logger.LogInformation("🔚 退出钓鱼状态");
-            _currentState = FishingState.Idle;
-        }
-        _stateStartTime = DateTime.MinValue;
-    }
+        // 抬起方向键
+        _input.Keyboard.KeyUp(User32.VK.VK_A);
+        _input.Keyboard.KeyUp(User32.VK.VK_D);
 
-    /// <summary>
-    /// 检测是否退出钓鱼（检测到美鸭梨菜单）
-    /// 美鸭梨菜单位于左上角1/4×1/4区域
-    /// </summary>
-    private bool CheckExitFishing(ImageRegion captureRectArea)
-    {
-        // 只有在钓鱼相关状态下才需要检测退出
-        if (_currentState == FishingState.Idle)
-        {
-            return false;
-        }
+        // 抬起其他可能的按键
+        _input.Keyboard.KeyUp(User32.VK.VK_S);
+        _input.Keyboard.KeyUp(User32.VK.VK_F);
 
-        try
-        {
-            var meiyaliMenu = captureRectArea.Find(_gameLoadingAssets.MeiyaliMenuRo);
-            if (!meiyaliMenu.IsEmpty())
-            {
-                _logger.LogInformation("🚪 检测到美鸭梨菜单，用户已退出钓鱼");
-                _currentState = FishingState.Idle;
-                _stateStartTime = DateTime.MinValue;
-                return true;
-            }
+        // 抬起鼠标按键
+        _input.Mouse.LeftButtonUp();
+        _input.Mouse.RightButtonUp();
 
-            return false;
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "检测美鸭梨菜单时发生异常");
-            return false;
-        }
+        _isKeyHeld = false;
+        _isPullingLeft = false;
     }
 }
