@@ -61,6 +61,11 @@ public partial class AllConfig : ObservableObject
     public AutoFishingConfig AutoFishingConfig { get; set; } = new();
     
     /// <summary>
+    /// 地图遮罩配置
+    /// </summary>
+    public MapMaskConfig MapMaskConfig { get; set; } = new();
+    
+    /// <summary>
     /// 窗口捕获的方式
     /// </summary>
     [ObservableProperty]
@@ -87,6 +92,7 @@ public partial class AllConfig : ObservableObject
         AutoPickConfig.PropertyChanged += OnAnyPropertyChanged;
         AutoSkipConfig.PropertyChanged += OnAnyPropertyChanged;
         AutoFishingConfig.PropertyChanged += OnAnyPropertyChanged;
+        MapMaskConfig.PropertyChanged += OnAnyPropertyChanged;
     }
 
     public void OnAnyPropertyChanged(object? sender, EventArgs args)

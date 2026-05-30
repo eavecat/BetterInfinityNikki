@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using BetterInfinityNikki.GameTask.Common.BgiVision;
@@ -30,7 +30,7 @@ public static class Feature2DExtensions
         feature2D.DetectAndCompute(img, null, out var trainKeyPoints, trainDescriptors);
 
         FeatureStorageHelper.SaveKeyPointArray(trainKeyPoints, trainKeyPointsPath);
-        FeatureStorageHelper.SaveDescMat(trainDescriptors, trainDescriptorsPath);
+        FeatureStorageHelper.SaveDescriptors(trainDescriptors, trainDescriptorsPath);
     }
 
     #endregion
@@ -200,8 +200,37 @@ public static class Feature2DExtensions
 #pragma warning disable CS8604 // 引用类型参数可能为 null。
         feature2D.DetectAndCompute(queryMat, queryMatMask, out var queryKeyPoints, queryDescriptors);
 #pragma warning restore CS8604 // 引用类型参数可能为 null。
+        
+        // 检查是否检测到特征点
+        if (queryDescriptors.Empty() || queryDescriptors.Rows == 0)
+        {
+            return [];
+        }
+        
+        // 确保查询描述子是 CV_32F 类型（FLANN 匹配器要求）
+        using var queryDescriptorsFloat = new Mat();
+        if (queryDescriptors.Type() != MatType.CV_32FC1)
+        {
+            queryDescriptors.ConvertTo(queryDescriptorsFloat, MatType.CV_32FC1);
+        }
+        else
+        {
+            queryDescriptors.CopyTo(queryDescriptorsFloat);
+        }
+        
+        // 确保训练描述子也是 CV_32F 类型
+        using var trainDescriptorsFloat = new Mat();
+        if (trainDescriptors.Type() != MatType.CV_32FC1)
+        {
+            trainDescriptors.ConvertTo(trainDescriptorsFloat, MatType.CV_32FC1);
+        }
+        else
+        {
+            trainDescriptors.CopyTo(trainDescriptorsFloat);
+        }
+        
         speedTimer.Record("模板生成KeyPoint");
-        var matches = GetMatcher(matcherType).KnnMatch(queryDescriptors, trainDescriptors, k: 2);
+        var matches = GetMatcher(matcherType).KnnMatch(queryDescriptorsFloat, trainDescriptorsFloat, k: 2);
         speedTimer.Record("FlannMatch");
 
         // 应用比例测试来过滤匹配点
@@ -256,7 +285,18 @@ public static class Feature2DExtensions
             return default;
         }
 
-        return Cv2.BoundingRect(corners);
+        var rect = Cv2.BoundingRect(corners);
+        
+        // 调试日志：输出坐标范围
+        System.Diagnostics.Debug.WriteLine($"[KnnMatchRect] 角点坐标: [{string.Join(", ", corners.Select(c => $"({c.X:F0},{c.Y:F0})"))}]");
+        System.Diagnostics.Debug.WriteLine($"[KnnMatchRect] 边界矩形: {rect}, queryMat尺寸: {queryMat.Cols}x{queryMat.Rows}");
+        
+        // 裁剪到地图边界内（避免负坐标或超出范围）
+        // 注意：trainKeyPoints 的坐标空间是训练地图的全尺寸（16384x16384）
+        if (rect.X < 0) rect = new Rect(0, rect.Y, rect.Width + rect.X, rect.Height);
+        if (rect.Y < 0) rect = new Rect(rect.X, 0, rect.Width, rect.Height + rect.Y);
+        
+        return rect;
     }
 
     #endregion Knn匹配

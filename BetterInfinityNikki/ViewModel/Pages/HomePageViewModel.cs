@@ -1,6 +1,8 @@
 using BetterInfinityNikki.Core.Config;
 using BetterInfinityNikki.Core.Recognition.ONNX;
+using BetterInfinityNikki.Core.Recognition.OpenCv.FeatureMatch;
 using BetterInfinityNikki.GameTask;
+using BetterInfinityNikki.GameTask.Common.Map.Maps;
 using BetterInfinityNikki.Service.Interface;
 using BetterInfinityNikki.ViewModel;
 using CommunityToolkit.Mvvm.ComponentModel;
@@ -156,6 +158,74 @@ public partial class HomePageViewModel : ObservableObject, IViewModel
         };
         dialogWindow.SourceInitialized += (s, e) => Helpers.Ui.WindowHelper.TryApplySystemBackdrop(dialogWindow);
         var result = dialogWindow.ShowDialog();
+    }
+
+    [RelayCommand]
+    public void OnGenerateMapFeatures()
+    {
+        try
+        {
+            _logger.LogInformation("开始生成世界地图特征数据...");
+            
+            // 在后台线程执行，避免阻塞 UI
+            Task.Run(() =>
+            {
+                WorldMapFeatureBuilder.BuildWorldMapFeatures();
+                
+                // 完成后在 UI 线程显示提示
+                Application.Current.Dispatcher.Invoke(() =>
+                {
+                    Toast.Success("地图特征数据生成完成！");
+                    _logger.LogInformation("地图特征数据生成完成");
+                });
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "生成地图特征数据失败");
+            Toast.Error($"生成地图特征数据失败: {ex.Message}");
+        }
+    }
+
+    [RelayCommand]
+    public void OnValidateMapFeatures()
+    {
+        try
+        {
+            _logger.LogInformation("开始验证地图特征数据...");
+            
+            // 在后台线程执行，避免阻塞 UI
+            Task.Run(() =>
+            {
+                string featuresDirectory = Path.Combine(
+                    AppDomain.CurrentDomain.BaseDirectory, 
+                    "Assets", "Map", "NikkiWorld", "Features");
+                string fullMapPath = Path.Combine(
+                    AppDomain.CurrentDomain.BaseDirectory, 
+                    "Assets", "Map", "NikkiWorld", "full_map.png");
+                string validationOutputDir = Path.Combine(
+                    AppDomain.CurrentDomain.BaseDirectory, 
+                    "Assets", "Map", "NikkiWorld", "Validation");
+                
+                FeatureDataValidator.ValidateAndVisualize(
+                    featuresDirectory: featuresDirectory,
+                    fullMapPath: fullMapPath,
+                    outputDirectory: validationOutputDir
+                );
+                
+                // 完成后在 UI 线程显示提示
+                Application.Current.Dispatcher.Invoke(() =>
+                {
+                    Toast.Success("特征数据验证完成！请查看 Validation 目录下的可视化结果");
+                    _logger.LogInformation("特征数据验证完成");
+                });
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "验证地图特征数据失败");
+            Toast.Error($"验证地图特征数据失败: {ex.Message}");
+        }
     }
 
     [RelayCommand]

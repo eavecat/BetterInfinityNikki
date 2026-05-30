@@ -1,100 +1,167 @@
-﻿using BetterInfinityNikki.Core.Config;
-using OpenCvSharp;
-using OpenCvSharp.Internal.Vectors;
 using System;
-using System.Diagnostics;
 using System.IO;
-using System.Runtime.InteropServices;
+using BetterInfinityNikki.Core.Config;
+using OpenCvSharp;
 
 namespace BetterInfinityNikki.Core.Recognition.OpenCv.FeatureMatch;
 
+/// <summary>
+/// 特征存储类
+/// 管理单个地图的特征数据（关键点和描述子）
+/// </summary>
 public class FeatureStorage
 {
     private readonly string _rootPath;
     private readonly string _name;
-    public void SetType(Feature2DType type)
-    {
-        TypeName = type.ToString();
-    }
 
+    /// <summary>
+    /// 特征类型名称（如 "SIFT"）
+    /// </summary>
+    public string TypeName { get; set; } = "UNKNOWN";
+
+    /// <summary>
+    /// 构造函数
+    /// </summary>
+    /// <param name="name">地图名称</param>
     public FeatureStorage(string name)
     {
         _name = name;
         _rootPath = Global.Absolute(@"Assets\Map\");
     }
+
+    /// <summary>
+    /// 构造函数（自定义根路径）
+    /// </summary>
+    /// <param name="name">地图名称</param>
+    /// <param name="rootPath">根路径</param>
     public FeatureStorage(string name, string rootPath)
     {
         _name = name;
         _rootPath = rootPath;
     }
 
-    public string TypeName { get; set; } = "UNKNOWN";
+    /// <summary>
+    /// 设置特征类型
+    /// </summary>
+    /// <param name="type">特征类型</param>
+    public void SetType(Feature2DType type)
+    {
+        TypeName = type.ToString();
+    }
 
+    /// <summary>
+    /// 加载关键点数组
+    /// </summary>
+    /// <returns>关键点数组，如果文件不存在则返回 null</returns>
     public unsafe KeyPoint[]? LoadKeyPointArray()
     {
         CreateFolder();
-        var kpPath = Path.Combine(_rootPath, $"{_name}_{TypeName}.kp.bin");
-        if (File.Exists(kpPath))
-        {
-            using var fs = File.Open(kpPath, FileMode.Open);
-            var sizeOfKeyPoint = Marshal.SizeOf<KeyPoint>();
-            if (fs.Length % sizeOfKeyPoint != 0) throw new FileFormatException("无法识别的KeyPoint格式");
-            using var kpVector = new VectorOfKeyPoint((nuint)(fs.Length / sizeOfKeyPoint));
-            using var ms = new UnmanagedMemoryStream((byte*)kpVector.ElemPtr, fs.Length, fs.Length, FileAccess.Write);
-            fs.CopyTo(ms);
-            return kpVector.ToArray();
-        }
-        return null;
+        var kpPath = GetKeyPointPath();
+        return FeatureStorageHelper.LoadKeyPointArray(kpPath);
     }
 
+    /// <summary>
+    /// 保存关键点数组
+    /// </summary>
+    /// <param name="kpArray">关键点数组</param>
     public unsafe void SaveKeyPointArray(KeyPoint[] kpArray)
     {
         CreateFolder();
-        var kpPath = Path.Combine(_rootPath, $"{_name}_{TypeName}.kp.bin");
-        var kpVector = new VectorOfKeyPoint(kpArray);
-        var sizeOfKeyPoint = Marshal.SizeOf<KeyPoint>();
-        var kpSpan = new ReadOnlySpan<byte>((byte*)kpVector.ElemPtr, kpArray.Length * sizeOfKeyPoint);
-        using var fs = new FileStream(kpPath, FileMode.Create);
-        fs.Write(kpSpan);
+        var kpPath = GetKeyPointPath();
+        FeatureStorageHelper.SaveKeyPointArray(kpArray, kpPath);
     }
 
+    /// <summary>
+    /// 加载描述子矩阵
+    /// </summary>
+    /// <returns>描述子矩阵，如果文件不存在则返回 null</returns>
+    public Mat? LoadDescriptors()
+    {
+        CreateFolder();
+        var descPath = GetDescriptorPath();
+        return FeatureStorageHelper.LoadDescriptors(descPath);
+    }
+
+    /// <summary>
+    /// 保存描述子矩阵
+    /// </summary>
+    /// <param name="descriptors">描述子矩阵</param>
+    public void SaveDescriptors(Mat descriptors)
+    {
+        CreateFolder();
+        var descPath = GetDescriptorPath();
+        FeatureStorageHelper.SaveDescriptors(descriptors, descPath);
+    }
+
+    /// <summary>
+    /// 检查特征文件是否存在
+    /// </summary>
+    /// <returns>是否所有特征文件都存在</returns>
+    public bool Exists()
+    {
+        var basePath = GetBasePath();
+        return FeatureStorageHelper.FeatureFilesExist(basePath, TypeName);
+    }
+
+    /// <summary>
+    /// 获取关键点文件路径
+    /// </summary>
+    /// <returns>关键点文件完整路径</returns>
+    private string GetKeyPointPath()
+    {
+        var basePath = GetBasePath();
+        FeatureStorageHelper.GetFeatureFilePaths(basePath, TypeName, out var kpPath, out _);
+        return kpPath;
+    }
+
+    /// <summary>
+    /// 获取描述子文件路径
+    /// </summary>
+    /// <returns>描述子文件完整路径</returns>
+    private string GetDescriptorPath()
+    {
+        var basePath = GetBasePath();
+        FeatureStorageHelper.GetFeatureFilePaths(basePath, TypeName, out _, out var descPath);
+        return descPath;
+    }
+
+    /// <summary>
+    /// 获取基础路径
+    /// </summary>
+    /// <returns>基础路径（不含扩展名）</returns>
+    private string GetBasePath()
+    {
+        return Path.Combine(_rootPath, _name);
+    }
+
+    /// <summary>
+    /// 创建文件夹（如果不存在）
+    /// </summary>
     private void CreateFolder()
     {
-        if (Directory.Exists(_rootPath) == false)
+        var folder = Path.GetDirectoryName(GetKeyPointPath())!;
+        if (!Directory.Exists(folder))
         {
-            Directory.CreateDirectory(_rootPath);
+            Directory.CreateDirectory(folder);
         }
     }
 
-    public Mat? LoadDescMat()
+    /// <summary>
+    /// 删除特征文件
+    /// </summary>
+    public void Delete()
     {
-        CreateFolder();
-        var files = Directory.GetFiles(_rootPath, $"{_name}_{TypeName}.mat.png", SearchOption.AllDirectories);
-        if (files.Length == 0)
-        {
-            return null;
-        }
-        else if (files.Length > 1)
-        {
-            Debug.WriteLine($"[FeatureSerializer] Found multiple files: {string.Join(", ", files)}");
-        }
-        using var img = new Mat(files[0], ImreadModes.Grayscale);
-        var mat = new Mat(img.Size(), MatType.CV_32FC1);
-        img.ConvertTo(mat, MatType.CV_32FC1);
-        return mat;
-    }
+        var kpPath = GetKeyPointPath();
+        var descPath = GetDescriptorPath();
 
-    public void SaveDescMat(Mat descMat)
-    {
-        CreateFolder();
-        // 删除旧文件
-        var fileName = $"{_name}_{TypeName}.mat.png";
-        var files = Directory.GetFiles(_rootPath, fileName, SearchOption.AllDirectories);
-        foreach (var file in files)
+        if (File.Exists(kpPath))
         {
-            File.Delete(file);
+            File.Delete(kpPath);
         }
-        var descPath = Path.Combine(_rootPath, fileName);
-        descMat.SaveImage(descPath);
+
+        if (File.Exists(descPath))
+        {
+            File.Delete(descPath);
+        }
     }
 }

@@ -6,6 +6,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
         xmlns:viewModel="clr-namespace:BetterInfinityNikki.ViewModel"
+        xmlns:controls="clr-namespace:BetterInfinityNikki.View.Controls"
         Title="MaskWindow"
         Width="500"
         Height="800"
@@ -44,6 +45,11 @@
 
     <AdornerDecorator ClipToBounds="True">
         <Grid>
+            <!-- 地图点位画布 -->
+            <controls:PointsCanvas x:Name="MapPointsCanvas"
+                                   PointsSource="{Binding MapPoints}"
+                                   LabelsSource="{Binding MapPointLabels}" />
+
             <!-- 状态栏 -->
             <Canvas x:Name="StatusCanvas"
                     Grid.Row="0"

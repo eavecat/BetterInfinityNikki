@@ -249,6 +249,68 @@
                 
                 <Separator Margin="-18,0" BorderThickness="0,1,0,0" />
                 
+                <!-- 生成地图特征数据 -->
+                <Grid Margin="16">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <ui:TextBlock Grid.Row="0"
+                                  Grid.Column="0"
+                                  FontTypography="Body"
+                                  Text="生成世界地图特征数据"
+                                  TextWrapping="Wrap" />
+                    <ui:TextBlock Grid.Row="1"
+                                  Grid.Column="0"
+                                  Foreground="{ui:ThemeResource TextFillColorTertiaryBrush}"
+                                  Text="首次使用需要生成 SIFT 特征数据，用于大地图视口检测"
+                                  TextWrapping="Wrap" />
+                    <ui:Button Grid.Row="0"
+                               Grid.RowSpan="2"
+                               Grid.Column="1"
+                               Margin="0,0,36,0"
+                               Command="{Binding GenerateMapFeaturesCommand}"
+                               Content="生成特征数据"
+                               Icon="{ui:SymbolIcon Map24}" />
+                </Grid>
+                
+                <Separator Margin="-18,0" BorderThickness="0,1,0,0" />
+                
+                <!-- 验证地图特征数据 -->
+                <Grid Margin="16">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <ui:TextBlock Grid.Row="0"
+                                  Grid.Column="0"
+                                  FontTypography="Body"
+                                  Text="验证世界地图特征数据"
+                                  TextWrapping="Wrap" />
+                    <ui:TextBlock Grid.Row="1"
+                                  Grid.Column="0"
+                                  Foreground="{ui:ThemeResource TextFillColorTertiaryBrush}"
+                                  Text="检查特征数据完整性并生成可视化报告"
+                                  TextWrapping="Wrap" />
+                    <ui:Button Grid.Row="0"
+                               Grid.RowSpan="2"
+                               Grid.Column="1"
+                               Margin="0,0,36,0"
+                               Command="{Binding ValidateMapFeaturesCommand}"
+                               Content="验证特征数据"
+                               Icon="{ui:SymbolIcon CheckmarkCircle24}" />
+                </Grid>
+                
+                <Separator Margin="-18,0" BorderThickness="0,1,0,0" />
+                
                 <!-- 手动选择窗口 -->
                 <Grid Margin="16">
                     <Grid.RowDefinitions>

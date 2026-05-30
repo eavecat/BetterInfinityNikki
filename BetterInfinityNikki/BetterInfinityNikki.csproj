@@ -95,6 +95,7 @@
 
 	<ItemGroup>
 	  <Folder Include="GameTask\AutoPathing\" />
+	  <Folder Include="GameTask\MapMask\Assets\1920x1080\" />
 	  <Folder Include="Service\Interface\" />
 	  <Folder Include="View\Pages\" />
 	  <Folder Include="ViewModel\Pages\" />

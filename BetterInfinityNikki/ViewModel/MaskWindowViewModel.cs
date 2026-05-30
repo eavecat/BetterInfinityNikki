@@ -1,6 +1,7 @@
 using BetterInfinityNikki.Core.Config;
 using BetterInfinityNikki.GameTask;
 using BetterInfinityNikki.Model;
+using BetterInfinityNikki.Model.MaskMap;
 using BetterInfinityNikki.Service.Interface;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
@@ -52,6 +53,18 @@ public partial class MaskWindowViewModel : ObservableObject
 
     [ObservableProperty]
     private double _logHeight;
+
+    /// <summary>
+    /// 地图点位列表
+    /// </summary>
+    [ObservableProperty]
+    private ObservableCollection<MaskMapPoint> _mapPoints = new();
+
+    /// <summary>
+    /// 地图点位标签列表
+    /// </summary>
+    [ObservableProperty]
+    private ObservableCollection<MaskMapPointLabel> _mapPointLabels = new();
 
     public MaskWindowViewModel()
     {
