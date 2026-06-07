@@ -18,8 +18,6 @@ public class MouseHook
 
     public event EventHandler<KeyPressedEventArgs>? MouseDownEvent = null;
 
-    public event EventHandler<KeyPressedEventArgs>? MouseUpEvent = null;
-
     public bool IsHold { get; set; }
 
     public MouseButtons BindMouse { get; set; } = MouseButtons.Left;

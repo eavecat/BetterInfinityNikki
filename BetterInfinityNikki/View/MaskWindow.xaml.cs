@@ -101,7 +101,7 @@ public partial class MaskWindow : Window
         }
     }
 
-    private void UpdateLayout()
+    private new void UpdateLayout()
     {
         if (_viewModel != null)
         {

@@ -17,8 +17,6 @@ public class KeyboardHook
 
     public event EventHandler<KeyPressedEventArgs>? KeyDownEvent = null;
 
-    public event EventHandler<KeyPressedEventArgs>? KeyUpEvent = null;
-
     public bool IsHold { get; set; }
 
     public Keys BindKey { get; set; } = Keys.None;

@@ -79,7 +79,7 @@ public class Region : IDisposable
     /// <summary>
     /// 绘图上下文
     /// </summary>
-    protected readonly DrawContent drawContent;
+    protected readonly DrawContent drawContent = null!;
 
     // public List<Region>? NextChildren { get; protected set; }
 

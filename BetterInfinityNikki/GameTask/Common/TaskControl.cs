@@ -220,6 +220,6 @@ public class TaskControl
         // var image = CaptureGameImage(TaskTriggerDispatcher.GlobalGameCapture);
         // var content = new CaptureContent(image, 0, 0);
         // return content.CaptureRectArea;
-        return null;
+        return null!;
     }
 }

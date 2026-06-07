@@ -1,6 +1,5 @@
 ﻿using System.Drawing;
 using BetterInfinityNikki.GameTask.Model.Area.Converter;
-using BetterInfinityNikki.GameTask.Model.Area.Converter;
 using BetterInfinityNikki.View.Drawable;
 using OpenCvSharp;
 using Rect = System.Windows.Rect;

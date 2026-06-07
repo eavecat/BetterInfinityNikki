@@ -63,6 +63,7 @@ public partial class MainWindowViewModel : ObservableObject, IViewModel
         
         // 应用上次保存的主题
         ApplyTheme(Config.CommonConfig.CurrentThemeType);
+        await Task.CompletedTask;
     }
 
     /// <summary>

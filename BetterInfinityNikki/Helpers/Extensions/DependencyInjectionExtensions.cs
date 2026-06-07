@@ -2,7 +2,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using System.Windows;
 using System.Windows.Controls;
-using BetterInfinityNikki.ViewModel;
 
 namespace BetterInfinityNikki.Helpers.Extensions;
 

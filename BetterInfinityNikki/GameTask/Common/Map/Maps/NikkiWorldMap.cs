@@ -14,7 +14,7 @@ public class NikkiWorldMap : SceneBaseMap
     /// <summary>
     /// 特征地图图像的块大小（像素）
     /// </summary>
-    public const int MapImageBlockWidth = 2048;
+    public new const int MapImageBlockWidth = 2048;
 
     /// <summary>
     /// 地图行数（用于分块索引）

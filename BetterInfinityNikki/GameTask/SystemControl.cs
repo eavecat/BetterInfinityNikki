@@ -356,7 +356,7 @@ public class SystemControl
     public static void RestartApplication(string[] newArgs)
     {
         // 获取当前程序路径
-        string exePath = Process.GetCurrentProcess().MainModule.FileName;
+        string exePath = Process.GetCurrentProcess().MainModule?.FileName ?? string.Empty;
 
         // 构建参数字符串
         string arguments = string.Join(" ", [..newArgs, "--no-single"]);

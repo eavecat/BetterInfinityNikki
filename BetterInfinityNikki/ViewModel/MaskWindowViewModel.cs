@@ -134,7 +134,6 @@ public partial class MaskWindowViewModel : ObservableObject
     private readonly IMaskMapPointService? _mapPointService;
     private CancellationTokenSource? _loadCategoriesCts;
     private CancellationTokenSource? _loadPointsCts;
-    private bool _isMapLabelTreeLoaded;
     private readonly SemaphoreSlim _iconLoadSemaphore = new(10, 10);
 
     #endregion
@@ -248,7 +247,6 @@ public partial class MaskWindowViewModel : ObservableObject
             });
 
             _logger.LogDebug("成功加载 {Count} 个点位分类", categories.Count);
-            _isMapLabelTreeLoaded = true;
         }
         catch (OperationCanceledException)
         {
@@ -281,6 +279,7 @@ public partial class MaskWindowViewModel : ObservableObject
         {
             MapLabelItems.Clear();
         }
+        await Task.CompletedTask;
     }
 
     /// <summary>
@@ -346,6 +345,7 @@ public partial class MaskWindowViewModel : ObservableObject
         }
 
         UpdateMapLabelItems(results);
+        await Task.CompletedTask;
     }
 
     /// <summary>
@@ -357,6 +357,7 @@ public partial class MaskWindowViewModel : ObservableObject
         SelectedMapLabelItems.Clear();
         MapPoints = new ObservableCollection<MaskMapPoint>();
         MapPointLabels = new ObservableCollection<MaskMapPointLabel>();
+        await Task.CompletedTask;
     }
 
     /// <summary>

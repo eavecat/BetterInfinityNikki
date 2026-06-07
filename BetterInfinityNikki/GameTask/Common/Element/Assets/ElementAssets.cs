@@ -3,8 +3,6 @@ using System.Collections.Generic;
 using BetterInfinityNikki.Core.Recognition;
 using BetterInfinityNikki.GameTask.Model;
 using BetterInfinityNikki.Helpers.Extensions;
-using BetterInfinityNikki.Core.Recognition;
-using BetterInfinityNikki.GameTask.Model;
 using OpenCvSharp;
 
 namespace BetterInfinityNikki.GameTask.Common.Element.Assets;

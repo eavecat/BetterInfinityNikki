@@ -39,7 +39,7 @@ public static class RightClickSelectBehavior
     {
         if (sender is TreeView treeView)
         {
-            var item = VisualUpwardSearch<TreeViewItem>(e.OriginalSource as DependencyObject);
+            var item = VisualUpwardSearch<TreeViewItem>(e.OriginalSource as DependencyObject ?? treeView);
             if (item != null)
             {
                 item.Focus();
@@ -54,6 +54,6 @@ public static class RightClickSelectBehavior
         {
             source = VisualTreeHelper.GetParent(source);
         }
-        return source as T;
+        return source as T ?? null!;
     }
 }

@@ -77,7 +77,7 @@ public class OcrFactory : IDisposable
         {
             return new CultureInfo(TaskContext.Instance().Config.OtherConfig.GameCultureInfoName);
         }
-        catch (Exception e)
+        catch (Exception)
         {
             var result = new CultureInfo(new OtherConfig().GameCultureInfoName);
             _logger.LogInformation("获取游戏文化信息失败，使用默认文化信息: {CultureInfo}", result.Name);

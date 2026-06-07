@@ -176,13 +176,13 @@ public class PointsCanvas : FrameworkElement
         }
     }
 
-    private void OnLabelsCollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
+    private void OnLabelsCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
         RebuildLabelMap();
         Refresh();
     }
 
-    private void OnPointsCollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
+    private void OnPointsCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
     {
         if (e.OldItems != null)
         {
@@ -220,7 +220,7 @@ public class PointsCanvas : FrameworkElement
         }
     }
 
-    private void OnPointPropertyChanged(object sender, PropertyChangedEventArgs e)
+    private void OnPointPropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         Refresh();
     }

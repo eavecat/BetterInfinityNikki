@@ -152,7 +152,6 @@ public class ImageRegion : Region
             {
                 // 检查 ROI 是否溢出，如果溢出则自动裁剪
                 var roiRect = ro.RegionOfInterest;
-                var needsClamp = false;
                 
                 if (roiRect.X < 0 || roiRect.Y < 0 || 
                     roiRect.X + roiRect.Width > roi.Cols || 
@@ -169,7 +168,6 @@ public class ImageRegion : Region
                     var clampedHeight = Math.Min(roiRect.Height, roi.Rows - clampedY);
                     
                     roiRect = new Rect(clampedX, clampedY, clampedWidth, clampedHeight);
-                    needsClamp = true;
                 }
 
                 roi = new Mat(roi, roiRect);

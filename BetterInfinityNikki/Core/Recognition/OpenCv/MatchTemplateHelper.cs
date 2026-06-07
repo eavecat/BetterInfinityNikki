@@ -106,7 +106,9 @@ public class MatchTemplateHelper
 
     public static List<Point> MatchTemplateMulti(Mat srcMat, Mat dstMat, double threshold)
     {
-        return MatchTemplateMulti(srcMat, dstMat, null, threshold);
+#pragma warning disable CS0612
+        return MatchTemplateMulti(srcMat, dstMat, null, threshold, 8);
+#pragma warning restore CS0612
     }
 
     /// <summary>

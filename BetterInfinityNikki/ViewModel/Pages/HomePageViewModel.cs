@@ -80,6 +80,7 @@ public partial class HomePageViewModel : ObservableObject, IViewModel
             _logger.LogInformation("切换捕获模式至 [{Mode}]", Config.CaptureMode);
             // TODO: 实现重启逻辑
         }
+        await Task.CompletedTask;
     }
 
     [RelayCommand]
@@ -344,7 +345,7 @@ public partial class HomePageViewModel : ObservableObject, IViewModel
         {
             return Config.CaptureMode.ToCaptureMode();
         }
-        catch (Exception e)
+        catch (Exception)
         {
             TaskContext.Instance().Config.CaptureMode = CaptureModes.BitBlt.ToString();
             return CaptureModes.BitBlt;

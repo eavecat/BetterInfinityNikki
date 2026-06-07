@@ -12,32 +12,32 @@ public class AutoFishingAssets : BaseAssets<AutoFishingAssets>
     /// <summary>
     /// 取消钓鱼按钮（右下角）
     /// </summary>
-    public RecognitionObject CancelFishingRo;
+    public RecognitionObject CancelFishingRo = null!;
 
     /// <summary>
     /// 收竿按钮（等待鱼上钩时显示）
     /// </summary>
-    public RecognitionObject ReelRodRo;
+    public RecognitionObject ReelRodRo = null!;
 
     /// <summary>
     /// 提竿按钮（鱼上钩时显示）
     /// </summary>
-    public RecognitionObject RaiseRodRo;
+    public RecognitionObject RaiseRodRo = null!;
 
     /// <summary>
     /// 拉扯鱼线提竿按钮（拉扯阶段显示）
     /// </summary>
-    public RecognitionObject PullFishingLineRo;
+    public RecognitionObject PullFishingLineRo = null!;
 
     /// <summary>
     /// 收线按钮（收线阶段显示）
     /// </summary>
-    public RecognitionObject ReelLineRo;
+    public RecognitionObject ReelLineRo = null!;
 
     /// <summary>
     /// 跳过动画按钮（钓鱼成功后显示）
     /// </summary>
-    public RecognitionObject SkipAnimRo;
+    public RecognitionObject SkipAnimRo = null!;
 
     private AutoFishingAssets()
     {

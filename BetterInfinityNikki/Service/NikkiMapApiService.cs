@@ -33,7 +33,7 @@ public sealed class NikkiMapApiService : IDisposable
     /// <summary>
     /// 获取点位类型目录（传送点、宝箱、钓鱼点……）
     /// </summary>
-    public async Task<CatalogListResponse> GetCatalogListAsync(string worldId = null, CancellationToken ct = default)
+    public async Task<CatalogListResponse> GetCatalogListAsync(string? worldId = null, CancellationToken ct = default)
     {
         var request = new CatalogListRequest
         {
@@ -71,7 +71,7 @@ public sealed class NikkiMapApiService : IDisposable
     /// <summary>
     /// 获取资源点位信息列表（支持Gzip压缩响应）
     /// </summary>
-    public async Task<SpawnerListResponse> GetSpawnerListAsync(int[] catalogTypeIds, string worldId = null,
+    public async Task<SpawnerListResponse> GetSpawnerListAsync(int[] catalogTypeIds, string? worldId = null,
         CancellationToken ct = default)
     {
         var request = new SpawnerListRequest
@@ -101,7 +101,7 @@ public sealed class NikkiMapApiService : IDisposable
 
             var result = JsonSerializer.Deserialize<SpawnerListData>(responseJson);
 
-            return new SpawnerListResponse { Data = result };
+            return new SpawnerListResponse { Data = result! };
         }
         catch (OperationCanceledException)
         {
