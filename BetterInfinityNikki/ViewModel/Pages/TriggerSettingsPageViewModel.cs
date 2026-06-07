@@ -16,11 +16,18 @@ public partial class TriggerSettingsPageViewModel : ViewModel
 {
     [ObservableProperty] private string[] _pickOcrEngineNames = [PickOcrEngineEnum.Paddle.ToString(), PickOcrEngineEnum.Yap.ToString()];
 
+    [ObservableProperty] private bool _isUpdatingMapPointCache;
+
+    public bool CanUpdateMapPointCache => !IsUpdatingMapPointCache;
+
     public AllConfig Config { get; set; }
 
-    public TriggerSettingsPageViewModel(IConfigService configService)
+    private readonly IMaskMapPointService _mapPointService;
+
+    public TriggerSettingsPageViewModel(IConfigService configService, IMaskMapPointService mapPointService)
     {
         Config = configService.Get();
+        _mapPointService = mapPointService;
         
         // 监听璨花捕影和芳间巡游的互斥变化
         Config.AutoPickConfig.PropertyChanged += (sender, e) =>
@@ -42,6 +49,30 @@ public partial class TriggerSettingsPageViewModel : ViewModel
                 }
             }
         };
+    }
+
+    partial void OnIsUpdatingMapPointCacheChanged(bool value)
+    {
+        OnPropertyChanged(nameof(CanUpdateMapPointCache));
+    }
+
+    [RelayCommand]
+    private async Task RefreshMapPointCacheAsync()
+    {
+        IsUpdatingMapPointCache = true;
+        try
+        {
+            await _mapPointService.UpdateCacheAsync();
+            await ThemedMessageBox.SuccessAsync("点位缓存数据已更新完成");
+        }
+        catch (Exception ex)
+        {
+            await ThemedMessageBox.ErrorAsync($"更新点位缓存失败：{ex.Message}");
+        }
+        finally
+        {
+            IsUpdatingMapPointCache = false;
+        }
     }
 
     [RelayCommand]

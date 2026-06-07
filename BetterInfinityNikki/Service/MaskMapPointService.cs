@@ -1,4 +1,7 @@
+using System.IO;
+using System.Text.Json;
 using System.Threading;
+using BetterInfinityNikki.Core.Config;
 using BetterInfinityNikki.Model.MaskMap;
 using BetterInfinityNikki.Service.Interface;
 using BetterInfinityNikki.Service.Model.NikkiMap.Responses;
@@ -7,6 +10,10 @@ namespace BetterInfinityNikki.Service;
 
 public sealed class MaskMapPointService : IMaskMapPointService
 {
+    private static readonly string CacheDir = Global.Absolute(Path.Combine("User", "Cache", "MaskMapData"));
+    private static readonly string CatalogCachePath = Path.Combine(CacheDir, "catalog_list.json");
+    private static readonly string SpawnerCachePath = Path.Combine(CacheDir, "spawner_list.json");
+
     private readonly ILogger<MaskMapPointService> _logger;
     private readonly NikkiMapApiService _apiService;
 
@@ -25,9 +32,45 @@ public sealed class MaskMapPointService : IMaskMapPointService
         {
             _logger.LogDebug("开始获取点位分类树");
 
-            var response = await _apiService.GetCatalogListAsync(ct: ct);
+            CatalogListData? catalogListData = null;
 
-            if (response?.Data?.List == null || response.Data.List.Count == 0)
+            if (File.Exists(CatalogCachePath))
+            {
+                try
+                {
+                    var cachedJson = await File.ReadAllTextAsync(CatalogCachePath, ct);
+                    catalogListData = JsonSerializer.Deserialize<CatalogListData>(cachedJson);
+                    _logger.LogDebug("从文件缓存加载点位分类");
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "读取分类缓存文件失败，将从API重新获取");
+                    catalogListData = null;
+                }
+            }
+
+            if (catalogListData == null)
+            {
+                var response = await _apiService.GetCatalogListAsync(ct: ct);
+                catalogListData = response?.Data;
+
+                if (catalogListData != null)
+                {
+                    try
+                    {
+                        Directory.CreateDirectory(CacheDir);
+                        var json = JsonSerializer.Serialize(catalogListData);
+                        await File.WriteAllTextAsync(CatalogCachePath, json, ct);
+                        _logger.LogDebug("点位分类数据已保存到缓存文件");
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "保存分类缓存文件失败");
+                    }
+                }
+            }
+
+            if (catalogListData?.List == null || catalogListData.List.Count == 0)
             {
                 _logger.LogWarning("未获取到任何点位分类");
                 return Array.Empty<MaskMapPointLabel>();
@@ -35,7 +78,7 @@ public sealed class MaskMapPointService : IMaskMapPointService
 
             var categories = new List<MaskMapPointLabel>();
 
-            foreach (var catalog in response.Data.List)
+            foreach (var catalog in catalogListData.List)
             {
                 var categoryName = NikkiMapApiService.ParseMultiLangText(catalog.Name, "zh-cn");
 
@@ -206,13 +249,71 @@ public sealed class MaskMapPointService : IMaskMapPointService
         try
         {
             if (_allSpawners != null) return;
+            await LoadSpawnersCoreAsync(ct);
+        }
+        finally
+        {
+            _loadLock.Release();
+        }
+    }
 
-            _logger.LogDebug("开始预加载所有点位数据");
+    private async Task LoadSpawnersCoreAsync(CancellationToken ct)
+    {
+        _logger.LogDebug("开始预加载所有点位数据");
 
-            var spawnerResponse = await _apiService.GetSpawnerListAsync(Array.Empty<int>(), ct: ct);
-            _allSpawners = spawnerResponse?.Data?.List ?? new List<Spawner>();
+        if (File.Exists(SpawnerCachePath))
+        {
+            try
+            {
+                var cachedJson = await File.ReadAllTextAsync(SpawnerCachePath, ct);
+                var cachedData = JsonSerializer.Deserialize<SpawnerListData>(cachedJson);
+                _allSpawners = cachedData?.List ?? new List<Spawner>();
+                _logger.LogInformation("从文件缓存加载点位数据，共 {Count} 个点位", _allSpawners.Count);
+                return;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "读取点位缓存文件失败，将从API重新获取");
+            }
+        }
 
-            _logger.LogInformation("预加载完成，共 {Count} 个点位", _allSpawners.Count);
+        var spawnerResponse = await _apiService.GetSpawnerListAsync(Array.Empty<int>(), ct: ct);
+        _allSpawners = spawnerResponse?.Data?.List ?? new List<Spawner>();
+
+        try
+        {
+            Directory.CreateDirectory(CacheDir);
+            var dataToCache = new SpawnerListData { List = _allSpawners };
+            var json = JsonSerializer.Serialize(dataToCache);
+            await File.WriteAllTextAsync(SpawnerCachePath, json, ct);
+            _logger.LogDebug("点位数据已保存到缓存文件");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "保存点位缓存文件失败");
+        }
+
+        _logger.LogInformation("预加载完成，共 {Count} 个点位", _allSpawners.Count);
+    }
+
+    public async Task UpdateCacheAsync(CancellationToken ct = default)
+    {
+        await _loadLock.WaitAsync(ct);
+        try
+        {
+            _allSpawners = null;
+
+            if (File.Exists(CatalogCachePath))
+                File.Delete(CatalogCachePath);
+            if (File.Exists(SpawnerCachePath))
+                File.Delete(SpawnerCachePath);
+
+            _logger.LogInformation("已清除点位缓存文件，开始重新获取数据");
+
+            await GetLabelCategoriesAsync(ct);
+            await LoadSpawnersCoreAsync(ct);
+
+            _logger.LogInformation("点位缓存数据更新完成");
         }
         finally
         {

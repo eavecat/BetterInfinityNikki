@@ -24,4 +24,9 @@ public interface IMaskMapPointService
     /// 获取单个点位的详细信息
     /// </summary>
     Task<MaskMapPointInfo> GetPointInfoAsync(MaskMapPoint point, CancellationToken ct = default);
+
+    /// <summary>
+    /// 清除缓存文件并重新从API获取数据
+    /// </summary>
+    Task UpdateCacheAsync(CancellationToken ct = default);
 }

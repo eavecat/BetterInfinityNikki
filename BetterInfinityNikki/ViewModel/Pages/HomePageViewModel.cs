@@ -36,8 +36,7 @@ public partial class HomePageViewModel : ObservableObject, IViewModel
 
     [ObservableProperty] private bool _taskDispatcherEnabled = false;
 
-    [ObservableProperty] 
-    private InferenceDeviceType[] _inferenceDeviceTypes = Enum.GetValues<InferenceDeviceType>();
+    [ObservableProperty] private InferenceDeviceType[] _inferenceDeviceTypes = Enum.GetValues<InferenceDeviceType>();
 
     public AllConfig Config { get; set; }
 
@@ -71,7 +70,6 @@ public partial class HomePageViewModel : ObservableObject, IViewModel
     [RelayCommand]
     private void OnLoaded()
     {
-        _logger.LogInformation("HomePage 已加载");
     }
 
     [RelayCommand]
@@ -166,12 +164,12 @@ public partial class HomePageViewModel : ObservableObject, IViewModel
         try
         {
             _logger.LogInformation("开始生成世界地图特征数据...");
-            
+
             // 在后台线程执行，避免阻塞 UI
             Task.Run(() =>
             {
                 WorldMapFeatureBuilder.BuildWorldMapFeatures();
-                
+
                 // 完成后在 UI 线程显示提示
                 Application.Current.Dispatcher.Invoke(() =>
                 {
@@ -193,26 +191,26 @@ public partial class HomePageViewModel : ObservableObject, IViewModel
         try
         {
             _logger.LogInformation("开始验证地图特征数据...");
-            
+
             // 在后台线程执行，避免阻塞 UI
             Task.Run(() =>
             {
                 string featuresDirectory = Path.Combine(
-                    AppDomain.CurrentDomain.BaseDirectory, 
+                    AppDomain.CurrentDomain.BaseDirectory,
                     "Assets", "Map", "NikkiWorld", "Features");
                 string fullMapPath = Path.Combine(
-                    AppDomain.CurrentDomain.BaseDirectory, 
+                    AppDomain.CurrentDomain.BaseDirectory,
                     "Assets", "Map", "NikkiWorld", "full_map.png");
                 string validationOutputDir = Path.Combine(
-                    AppDomain.CurrentDomain.BaseDirectory, 
+                    AppDomain.CurrentDomain.BaseDirectory,
                     "Assets", "Map", "NikkiWorld", "Validation");
-                
+
                 FeatureDataValidator.ValidateAndVisualize(
                     featuresDirectory: featuresDirectory,
                     fullMapPath: fullMapPath,
                     outputDirectory: validationOutputDir
                 );
-                
+
                 // 完成后在 UI 线程显示提示
                 Application.Current.Dispatcher.Invoke(() =>
                 {
@@ -325,7 +323,7 @@ public partial class HomePageViewModel : ObservableObject, IViewModel
                 _taskDispatcher.UiTaskStartTickEvent -= OnUiTaskStartTick;
                 _taskDispatcher.UiTaskStopTickEvent += OnUiTaskStopTick;
                 _taskDispatcher.UiTaskStartTickEvent += OnUiTaskStartTick;
-                
+
                 // 创建并显示遮罩窗口
                 if (Config.MaskWindowConfig.MaskEnabled)
                 {
@@ -334,7 +332,7 @@ public partial class HomePageViewModel : ObservableObject, IViewModel
                     MaskWindow.Instance().RefreshPosition();
                     _logger.LogInformation("遮罩窗口已启动");
                 }
-                
+
                 TaskDispatcherEnabled = true;
             }
         }
@@ -379,7 +377,7 @@ public partial class HomePageViewModel : ObservableObject, IViewModel
             if (TaskDispatcherEnabled)
             {
                 _taskDispatcher.Stop();
-                
+
                 // 隐藏或关闭遮罩窗口
                 if (_maskWindow != null && _maskWindow.IsExist())
                 {
@@ -390,7 +388,7 @@ public partial class HomePageViewModel : ObservableObject, IViewModel
                     _maskWindow?.Close();
                     _maskWindow = null;
                 }
-                
+
                 TaskDispatcherEnabled = false;
                 TaskContext.Instance().IsInitialized = false;
             }

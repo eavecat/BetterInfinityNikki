@@ -256,7 +256,7 @@
                             <ColumnDefinition Width="58*" />
                             <ColumnDefinition Width="12*" />
                             <ColumnDefinition Width="640*" />
-                            <ColumnDefinition Width="1092*" />
+                            <ColumnDefinition Width="1034*" />
                         </Grid.ColumnDefinitions>
                         <Grid.RowDefinitions>
                             <RowDefinition Height="328*" />
@@ -267,7 +267,7 @@
 
                         <Viewbox x:Name="MapPointPickerToggleViewbox"
                                 Grid.Row="3"
-                                Grid.Column="0"
+                                Grid.Column="4"
                                 Stretch="Uniform"
                                 HorizontalAlignment="Stretch"
                                 VerticalAlignment="Stretch">
@@ -304,7 +304,7 @@
                         <Popup AllowsTransparency="True"
                                IsOpen="{Binding IsMapPointPickerOpen}"
                                PlacementTarget="{Binding ElementName=MapPointPickerToggleViewbox}"
-                               Placement="Top"
+                               Placement="Left"
                                HorizontalOffset="0"
                                VerticalOffset="{StaticResource MapPointPickerVerticalOffset}"
                                StaysOpen="True">

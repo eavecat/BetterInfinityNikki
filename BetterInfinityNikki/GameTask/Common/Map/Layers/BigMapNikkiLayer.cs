@@ -323,8 +323,8 @@ public class BigMapNikkiLayer
                 prevRect
             );
 
-            _logger.LogInformation("分块范围: row[{RowStart}-{RowEnd}], col[{ColStart}-{ColEnd}]",
-                rowStart, rowEnd, colStart, colEnd);
+            // _logger.LogInformation("分块范围: row[{RowStart}-{RowEnd}], col[{ColStart}-{ColEnd}]",
+                // rowStart, rowEnd, colStart, colEnd);
 
             // 扩展搜索范围
             int expandBlocks = _config.AdaptiveSearchExpandBlocks;
