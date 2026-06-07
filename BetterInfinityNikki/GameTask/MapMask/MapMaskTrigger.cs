@@ -60,8 +60,7 @@ public class MapMaskTrigger : ITaskTrigger
                 var window = MaskWindow.InstanceNullable();
                 if (window?.DataContext is MaskWindowViewModel vm)
                 {
-                    // TODO: 添加 IsInBigMapUi 属性到 ViewModel
-                    // vm.IsInBigMapUi = false;
+                    vm.IsInBigMapUi = false;
                 }
 
                 window?.MapPointsCanvas?.UpdateViewport(0, 0, 0, 0);
@@ -85,12 +84,22 @@ public class MapMaskTrigger : ITaskTrigger
 
         try
         {
-            // TODO: 检测是否在大地图界面
+            // 检测是否在大地图界面
             var inBigMapUi = DetectBigMap(content);
+
+            // 更新 ViewModel 中的大地图状态
+            UIDispatcherHelper.BeginInvoke(() =>
+            {
+                var window = MaskWindow.InstanceNullable();
+                if (window?.DataContext is MaskWindowViewModel vm)
+                {
+                    vm.IsInBigMapUi = inBigMapUi;
+                }
+            });
 
             if (inBigMapUi && _config.Enabled)
             {
-                // TODO: 计算大地图视口位置
+                // 计算大地图视口位置
                 var viewport = CalculateBigMapViewport(content);
 
                 if (viewport.HasValue)
@@ -264,6 +273,10 @@ public class MapMaskTrigger : ITaskTrigger
                 window?.MapPointsCanvas?.UpdateViewport(
                     viewport.X, viewport.Y,
                     viewport.Width, viewport.Height);
+            }
+            else
+            {
+                window?.MapPointsCanvas?.UpdateViewport(0, 0, 0, 0);
             }
         }
 

@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Net.Http;
 using System.Windows;
 using System.Windows.Threading;
 using BetterInfinityNikki.Helpers.Extensions;
@@ -11,9 +12,11 @@ using BetterInfinityNikki.Service;
 using BetterInfinityNikki.Service.Interface;
 using BetterInfinityNikki.View;
 using BetterInfinityNikki.ViewModel;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using LazyCache;
 using Serilog;
 using Serilog.Events;
 using Serilog.Sinks.RichTextBox.Abstraction;
@@ -91,6 +94,22 @@ public partial class App : Application
                 
                 // My Services
                 services.AddSingleton<GameTask.TaskTriggerDispatcher>();
+                
+                // Nikki Map API Service
+                services.AddSingleton<NikkiMapApiService>(sp =>
+                    new NikkiMapApiService(new HttpClient(new HttpClientHandler
+                    {
+                        AutomaticDecompression = System.Net.DecompressionMethods.All
+                    }), sp.GetRequiredService<ILogger<NikkiMapApiService>>()));
+                
+                // Mask Map Point Service
+                services.AddSingleton<IMaskMapPointService, MaskMapPointService>();
+                
+                // Memory Cache & File Cache (for icon loading)
+                services.AddMemoryCache();
+                services.AddSingleton<IAppCache, CachingService>();
+                services.AddSingleton<MemoryFileCache>();
+                services.AddSingleton(TimeProvider.System);
             }
         )
         .Build();

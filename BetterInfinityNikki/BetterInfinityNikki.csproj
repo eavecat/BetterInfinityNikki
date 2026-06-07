@@ -56,6 +56,13 @@
 		<PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
 		<PackageReference Include="YamlDotNet" Version="16.3.0" />
 		
+		<!-- Compression -->
+		<PackageReference Include="Snappier" Version="1.1.6" />
+		
+		<!-- Image Processing & Caching -->
+		<PackageReference Include="SixLabors.ImageSharp" Version="3.1.7" />
+		<PackageReference Include="LazyCache" Version="2.4.0" />
+		
 		<!-- Utilities -->
 		<PackageReference Include="DeviceId" Version="6.9.0" />
 		<PackageReference Include="DeviceId.Windows" Version="6.9.0" />

@@ -5,26 +5,40 @@ using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Linq;
 using System.Windows;
-using System.Windows.Input;
 using System.Windows.Media;
 using BetterInfinityNikki.Model.MaskMap;
 
 namespace BetterInfinityNikki.View.Controls;
 
-/// <summary>
-/// 高性能点位绘制控件，使用 DrawingVisual 实现轻量级渲染
-/// </summary>
 public class PointsCanvas : FrameworkElement
 {
     private readonly VisualCollection _children;
     private readonly DrawingVisual _drawingVisual;
     private readonly Dictionary<string, Brush> _colorBrushCache;
-    
-    // 私有字段
+
     private ObservableCollection<MaskMapPoint>? _points;
+    private ObservableCollection<MaskMapPointLabel>? _labels;
     private List<MaskMapPoint> _allPoints = new();
     private Dictionary<string, MaskMapPointLabel> _labelMap = new();
     private Rect _viewportRect = Rect.Empty;
+
+    private static readonly SolidColorBrush FillBrush;
+    private static readonly Pen BorderPen;
+    private static readonly SolidColorBrush ShadowBrush;
+
+    static PointsCanvas()
+    {
+        FillBrush = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#323947"));
+        FillBrush.Freeze();
+
+        var borderBrush = new SolidColorBrush(Color.FromRgb(0xD3, 0xBC, 0x8E));
+        borderBrush.Freeze();
+        BorderPen = new Pen(borderBrush, 2.0);
+        BorderPen.Freeze();
+
+        ShadowBrush = new SolidColorBrush(Color.FromArgb(30, 0, 0, 0));
+        ShadowBrush.Freeze();
+    }
 
     #region 依赖属性
 
@@ -38,25 +52,19 @@ public class PointsCanvas : FrameworkElement
     public static readonly DependencyProperty LabelsSourceProperty =
         DependencyProperty.Register(
             nameof(LabelsSource),
-            typeof(IEnumerable<MaskMapPointLabel>),
+            typeof(ObservableCollection<MaskMapPointLabel>),
             typeof(PointsCanvas),
             new PropertyMetadata(null, OnLabelsSourceChanged));
 
-    /// <summary>
-    /// 点位数据源
-    /// </summary>
     public ObservableCollection<MaskMapPoint>? PointsSource
     {
         get => (ObservableCollection<MaskMapPoint>?)GetValue(PointsSourceProperty);
         set => SetValue(PointsSourceProperty, value);
     }
 
-    /// <summary>
-    /// 标签数据源
-    /// </summary>
-    public IEnumerable<MaskMapPointLabel>? LabelsSource
+    public ObservableCollection<MaskMapPointLabel>? LabelsSource
     {
-        get => (IEnumerable<MaskMapPointLabel>?)GetValue(LabelsSourceProperty);
+        get => (ObservableCollection<MaskMapPointLabel>?)GetValue(LabelsSourceProperty);
         set => SetValue(LabelsSourceProperty, value);
     }
 
@@ -64,14 +72,12 @@ public class PointsCanvas : FrameworkElement
 
     private static void OnPointsSourceChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
-        var canvas = (PointsCanvas)d;
-        canvas.UpdatePoints(e.NewValue as ObservableCollection<MaskMapPoint>);
+        ((PointsCanvas)d).UpdatePoints(e.NewValue as ObservableCollection<MaskMapPoint>);
     }
 
     private static void OnLabelsSourceChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
-        var canvas = (PointsCanvas)d;
-        canvas.UpdateLabels(e.NewValue as IEnumerable<MaskMapPointLabel>);
+        ((PointsCanvas)d).UpdateLabels(e.NewValue as ObservableCollection<MaskMapPointLabel>);
     }
 
     public PointsCanvas()
@@ -80,9 +86,13 @@ public class PointsCanvas : FrameworkElement
         _drawingVisual = new DrawingVisual();
         _children.Add(_drawingVisual);
         _colorBrushCache = new Dictionary<string, Brush>();
-
-        // 启用命中测试
         IsHitTestVisible = true;
+        SizeChanged += OnSizeChanged;
+    }
+
+    private void OnSizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        Refresh();
     }
 
     #region Visual 相关
@@ -130,12 +140,19 @@ public class PointsCanvas : FrameworkElement
         Refresh();
     }
 
-    private void UpdateLabels(IEnumerable<MaskMapPointLabel>? labels)
+    private void UpdateLabels(ObservableCollection<MaskMapPointLabel>? labels)
     {
-        if (labels != null)
+        if (_labels != null)
         {
-            _labelMap = labels.ToDictionary(l => l.LabelId, l => l);
-            _colorBrushCache.Clear();
+            _labels.CollectionChanged -= OnLabelsCollectionChanged;
+        }
+
+        _labels = labels;
+
+        if (_labels != null)
+        {
+            _labels.CollectionChanged += OnLabelsCollectionChanged;
+            RebuildLabelMap();
         }
         else
         {
@@ -143,6 +160,25 @@ public class PointsCanvas : FrameworkElement
             _colorBrushCache.Clear();
         }
 
+        Refresh();
+    }
+
+    private void RebuildLabelMap()
+    {
+        _labelMap.Clear();
+        _colorBrushCache.Clear();
+        if (_labels != null)
+        {
+            foreach (var label in _labels)
+            {
+                _labelMap[label.LabelId] = label;
+            }
+        }
+    }
+
+    private void OnLabelsCollectionChanged(object sender, NotifyCollectionChangedEventArgs e)
+    {
+        RebuildLabelMap();
         Refresh();
     }
 
@@ -186,7 +222,6 @@ public class PointsCanvas : FrameworkElement
 
     private void OnPointPropertyChanged(object sender, PropertyChangedEventArgs e)
     {
-        // 点位属性变化时重绘
         Refresh();
     }
 
@@ -194,9 +229,6 @@ public class PointsCanvas : FrameworkElement
 
     #region 渲染逻辑
 
-    /// <summary>
-    /// 渲染所有点位
-    /// </summary>
     private void RenderPoints()
     {
         using var dc = _drawingVisual.RenderOpen();
@@ -213,7 +245,6 @@ public class PointsCanvas : FrameworkElement
             return;
         }
 
-        // 扩展可视区域，避免边缘闪烁
         var expandedViewport = _viewportRect;
         expandedViewport.Inflate(MaskMapPointStatic.Width, MaskMapPointStatic.Height);
 
@@ -222,78 +253,55 @@ public class PointsCanvas : FrameworkElement
 
         foreach (var point in _allPoints)
         {
-            // 检查点是否在扩展的可视区域内
             if (!expandedViewport.Contains(point.ImageX, point.ImageY))
             {
                 continue;
             }
 
-            // 计算屏幕坐标
             var localX = (point.ImageX - _viewportRect.X) * scaleX;
             var localY = (point.ImageY - _viewportRect.Y) * scaleY;
 
-            // 绘制点位
             DrawPoint(dc, point, localX, localY, MaskMapPointStatic.Width, MaskMapPointStatic.Height);
         }
     }
 
-    /// <summary>
-    /// 绘制单个点位
-    /// </summary>
     private void DrawPoint(DrawingContext dc, MaskMapPoint point, double centerX, double centerY, double width, double height)
     {
         double radius = width / 2.0;
-        double strokeThickness = 2.0;
-
-        Point circleCenter = new Point(centerX, centerY);
-
-        // 填充颜色 #323947
-        var fillBrush = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#323947"));
-        fillBrush.Freeze();
-
-        // 边框颜色 #D3BC8E
-        var borderBrush = new SolidColorBrush(Color.FromRgb(0xD3, 0xBC, 0x8E));
-        borderBrush.Freeze();
-
-        var borderPen = new Pen(borderBrush, strokeThickness);
-        borderPen.Freeze();
-
-        // 阴影效果
-        var shadowBrush = new SolidColorBrush(Color.FromArgb(30, 0, 0, 0));
-        shadowBrush.Freeze();
-
-        var shadowOffset = new Point(2, 2);
-
-        // 绘制圆形阴影
-        var shadowCircleGeometry = new EllipseGeometry(
-            new Point(circleCenter.X + shadowOffset.X, circleCenter.Y + shadowOffset.Y),
-            radius, radius);
-        dc.DrawGeometry(shadowBrush, null, shadowCircleGeometry);
-
-        // 绘制圆形
+        var circleCenter = new Point(centerX, centerY);
         var circleGeometry = new EllipseGeometry(circleCenter, radius, radius);
-        dc.DrawGeometry(fillBrush, borderPen, circleGeometry);
 
-        // 如果有标签信息，尝试绘制图标或颜色
+        // 阴影
+        var shadowGeometry = new EllipseGeometry(
+            new Point(circleCenter.X + 2, circleCenter.Y + 2), radius, radius);
+        dc.DrawGeometry(ShadowBrush, null, shadowGeometry);
+
+        // 底圆
+        dc.DrawGeometry(FillBrush, BorderPen, circleGeometry);
+
+        // 内容
         if (_labelMap.TryGetValue(point.LabelId, out var label))
         {
-            var brush = GetColorBrush(label);
-            dc.DrawEllipse(brush, null, circleCenter, width / 2.0, height / 2.0);
+            if (label.IconImage != null)
+            {
+                var imageRect = new Rect(centerX - radius, centerY - radius, width, height);
+                dc.PushClip(circleGeometry);
+                dc.DrawImage(label.IconImage, imageRect);
+                dc.Pop();
+            }
+            else
+            {
+                dc.DrawEllipse(GetColorBrush(label), null, circleCenter, radius, radius);
+            }
         }
         else
         {
-            // 没有标签信息，绘制默认随机颜色圆点
-            var color = GenerateRandomColor(point.Id);
-            var brush = new SolidColorBrush(color);
+            var brush = new SolidColorBrush(GenerateRandomColor(point.Id));
             brush.Freeze();
-
-            dc.DrawEllipse(brush, null, circleCenter, width / 2.0, height / 2.0);
+            dc.DrawEllipse(brush, null, circleCenter, radius, radius);
         }
     }
 
-    /// <summary>
-    /// 获取颜色画刷（带缓存）
-    /// </summary>
     private Brush GetColorBrush(MaskMapPointLabel label)
     {
         if (_colorBrushCache.TryGetValue(label.LabelId, out var cachedBrush))
@@ -319,10 +327,7 @@ public class PointsCanvas : FrameworkElement
         return brush;
     }
 
-    /// <summary>
-    /// 根据字符串生成一致的随机颜色
-    /// </summary>
-    private Color GenerateRandomColor(string seed)
+    private static Color GenerateRandomColor(string seed)
     {
         var hash = seed?.GetHashCode() ?? 0;
         var random = new Random(hash);
@@ -336,13 +341,6 @@ public class PointsCanvas : FrameworkElement
 
     #region 公共方法
 
-    /// <summary>
-    /// 更新视口区域
-    /// </summary>
-    /// <param name="x">视口左上角 X 坐标</param>
-    /// <param name="y">视口左上角 Y 坐标</param>
-    /// <param name="width">视口宽度</param>
-    /// <param name="height">视口高度</param>
     public void UpdateViewport(double x, double y, double width, double height)
     {
         var newRect = new Rect(x, y, width, height);
@@ -355,9 +353,6 @@ public class PointsCanvas : FrameworkElement
         Refresh();
     }
 
-    /// <summary>
-    /// 刷新渲染
-    /// </summary>
     public void Refresh()
     {
         RenderPoints();

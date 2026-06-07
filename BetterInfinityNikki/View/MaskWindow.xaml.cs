@@ -149,6 +149,7 @@ public partial class MaskWindow : Window
         if (_viewModel != null)
         {
             _viewModel.LoadedCommand.Execute(null);
+            _viewModel.PropertyChanged += ViewModelOnPropertyChanged;
         }
 
         UpdateClickThroughState();
@@ -164,7 +165,20 @@ public partial class MaskWindow : Window
             _maskWindowConfig.PropertyChanged -= MaskWindowConfigOnPropertyChanged;
         }
 
+        if (_viewModel != null)
+        {
+            _viewModel.PropertyChanged -= ViewModelOnPropertyChanged;
+        }
+
         base.OnClosed(e);
+    }
+
+    private void ViewModelOnPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(MaskWindowViewModel.IsInBigMapUi))
+        {
+            Dispatcher.Invoke(UpdateClickThroughState);
+        }
     }
 
     private void MaskWindowConfigOnPropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -181,14 +195,18 @@ public partial class MaskWindow : Window
         {
             var taskContext = TaskContext.Instance();
             var editEnabled = taskContext.Config.MaskWindowConfig.OverlayLayoutEditEnabled;
-
+            
+            // 获取 ViewModel 中的大地图状态
+            var inBigMapUi = _viewModel?.IsInBigMapUi == true;
+        
             if (editEnabled)
             {
                 this.SetClickThrough(false);
                 return;
             }
-
-            this.SetClickThrough(true);
+        
+            // 在大地图界面时不穿透，其他情况穿透
+            this.SetClickThrough(!inBigMapUi);
         }
         catch
         {

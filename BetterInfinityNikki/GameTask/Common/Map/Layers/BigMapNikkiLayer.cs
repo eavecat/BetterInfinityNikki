@@ -262,11 +262,11 @@ public class BigMapNikkiLayer
 
             if (resultRect == default)
             {
-                _logger.LogDebug("特征匹配失败，未找到有效匹配");
+                // _logger.LogDebug("特征匹配失败，未找到有效匹配");
                 return default;
             }
 
-            _logger.LogDebug("大地图检测成功: {Rect}", resultRect);
+            // _logger.LogDebug("大地图检测成功: {Rect}", resultRect);
             return resultRect;
         }
         catch (Exception ex)
@@ -312,8 +312,8 @@ public class BigMapNikkiLayer
                 1.0 / NikkiWorldMap.BigMapScaleFactor,
                 InterpolationFlags.Area);
 
-            _logger.LogDebug("自适应搜索: prevRect={PrevRect}, 地图尺寸={MapSize}, scaledMat={ScaledMat}",
-                prevRect, _worldMap.MapSize, new Size(scaledMat.Cols, scaledMat.Rows));
+            // _logger.LogDebug("自适应搜索: prevRect={PrevRect}, 地图尺寸={MapSize}, scaledMat={ScaledMat}",
+                // prevRect, _worldMap.MapSize, new Size(scaledMat.Cols, scaledMat.Rows));
 
             // prevRect 已经是地图坐标（16384 空间），直接用于分块定位
             var (rowStart, rowEnd, colStart, colEnd) = KeyPointFeatureBlockHelper.GetCellRange(
@@ -359,7 +359,7 @@ public class BigMapNikkiLayer
 
             if (resultRect == default)
             {
-                _logger.LogDebug("自适应搜索失败，未找到有效匹配");
+                // _logger.LogDebug("自适应搜索失败，未找到有效匹配");
                 return default;
             }
 

@@ -1,14 +1,24 @@
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Drawing;
+using System.Runtime.CompilerServices;
+using System.Windows.Media;
 
 namespace BetterInfinityNikki.Model.MaskMap;
 
 /// <summary>
 /// 地图点位标签
 /// </summary>
-public class MaskMapPointLabel
+public class MaskMapPointLabel : INotifyPropertyChanged
 {
+    public event PropertyChangedEventHandler? PropertyChanged;
+
+    private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
+    {
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+    }
+
     /// <summary>
     /// 标签ID
     /// </summary>
@@ -47,5 +57,21 @@ public class MaskMapPointLabel
     /// <summary>
     /// 颜色（如果没有图片时使用，为空则随机生成）
     /// </summary>
-    public Color? Color { get; set; }
+    public System.Drawing.Color? Color { get; set; }
+
+    private ImageSource? _iconImage;
+
+    /// <summary>
+    /// 图标图片（用于UI显示）
+    /// </summary>
+    public ImageSource? IconImage
+    {
+        get => _iconImage;
+        set
+        {
+            if (ReferenceEquals(_iconImage, value)) return;
+            _iconImage = value;
+            OnPropertyChanged();
+        }
+    }
 }
