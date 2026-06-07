@@ -26,6 +26,9 @@ public partial class OtherConfig : ObservableObject
     
     [ObservableProperty]
     private Miyoushe _miyousheConfig = new();
+    //美鸭梨配置
+    [ObservableProperty]
+    private Meiyali _meiyaliConfig = new();
     //OCR配置
     [ObservableProperty]
     private Ocr _ocrConfig = new();
@@ -66,6 +69,14 @@ public partial class OtherConfig : ObservableObject
         private bool _logSyncCookie = true;
         
     }
+
+    public partial class Meiyali : ObservableObject
+    {
+        //token
+        [ObservableProperty]
+        private string _token = "";
+    }
+
     public partial class MiyousheDataSupport : ObservableObject
     {
         [ObservableProperty]

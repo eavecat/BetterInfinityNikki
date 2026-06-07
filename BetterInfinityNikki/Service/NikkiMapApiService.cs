@@ -4,6 +4,7 @@ using System.Net.Http;
 using System.Text;
 using System.Text.Json;
 using System.Threading;
+using BetterInfinityNikki.GameTask;
 using BetterInfinityNikki.Service.Model.NikkiMap.Requests;
 using BetterInfinityNikki.Service.Model.NikkiMap.Responses;
 using Snappier;
@@ -17,7 +18,7 @@ public sealed class NikkiMapApiService : IDisposable
 {
     private const string BaseUrl = "https://myl-api.nuanpaper.com/v1/strategy/map";
     private const int ClientId = 1106;
-    private const string Token = "985b48b67d837fb39c8b8df4797f4f7de91cc8ed";
+    private const string DefaultToken = "985b48b67d837fb39c8b8df4797f4f7de91cc8ed";
     private const string OpenId = "199696041";
     private const string DefaultWorldId = "1";
 
@@ -30,6 +31,12 @@ public sealed class NikkiMapApiService : IDisposable
         _logger = logger;
     }
 
+    private static string GetToken()
+    {
+        var configToken = TaskContext.Instance().Config.OtherConfig.MeiyaliConfig.Token;
+        return string.IsNullOrEmpty(configToken) ? DefaultToken : configToken;
+    }
+
     /// <summary>
     /// 获取点位类型目录（传送点、宝箱、钓鱼点……）
     /// </summary>
@@ -38,7 +45,7 @@ public sealed class NikkiMapApiService : IDisposable
         var request = new CatalogListRequest
         {
             ClientId = ClientId,
-            Token = Token,
+            Token = GetToken(),
             OpenId = OpenId,
             WorldId = worldId ?? DefaultWorldId
         };
@@ -77,7 +84,7 @@ public sealed class NikkiMapApiService : IDisposable
         var request = new SpawnerListRequest
         {
             ClientId = ClientId,
-            Token = Token,
+            Token = GetToken(),
             OpenId = OpenId,
             WorldId = worldId ?? DefaultWorldId,
             CatalogTypeId = catalogTypeIds ?? Array.Empty<int>()
@@ -122,7 +129,7 @@ public sealed class NikkiMapApiService : IDisposable
         var request = new SpawnerInfoRequest
         {
             ClientId = ClientId,
-            Token = Token,
+            Token = GetToken(),
             OpenId = OpenId,
             Id = id
         };

@@ -86,7 +86,7 @@ public partial class App : Application
                 // Views - Pages (带 ViewModel 的页面使用 AddView)
                 services.AddView<View.Pages.HomePage, ViewModel.Pages.HomePageViewModel>();
                 services.AddView<View.Pages.TriggerSettingsPage, ViewModel.Pages.TriggerSettingsPageViewModel>();
-                services.AddSingleton<View.Pages.CommonSettingsPage>();
+                services.AddView<View.Pages.CommonSettingsPage, ViewModel.Pages.CommonSettingsPageViewModel>();
                 
                 // OCR Services
                 services.AddSingleton<BgiOnnxFactory>();

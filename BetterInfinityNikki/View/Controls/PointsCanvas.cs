@@ -22,24 +22,6 @@ public class PointsCanvas : FrameworkElement
     private Dictionary<string, MaskMapPointLabel> _labelMap = new();
     private Rect _viewportRect = Rect.Empty;
 
-    private static readonly SolidColorBrush FillBrush;
-    private static readonly Pen BorderPen;
-    private static readonly SolidColorBrush ShadowBrush;
-
-    static PointsCanvas()
-    {
-        FillBrush = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#323947"));
-        FillBrush.Freeze();
-
-        var borderBrush = new SolidColorBrush(Color.FromRgb(0xD3, 0xBC, 0x8E));
-        borderBrush.Freeze();
-        BorderPen = new Pen(borderBrush, 2.0);
-        BorderPen.Freeze();
-
-        ShadowBrush = new SolidColorBrush(Color.FromArgb(30, 0, 0, 0));
-        ShadowBrush.Freeze();
-    }
-
     #region 依赖属性
 
     public static readonly DependencyProperty PointsSourceProperty =
@@ -269,25 +251,13 @@ public class PointsCanvas : FrameworkElement
     {
         double radius = width / 2.0;
         var circleCenter = new Point(centerX, centerY);
-        var circleGeometry = new EllipseGeometry(circleCenter, radius, radius);
 
-        // 阴影
-        var shadowGeometry = new EllipseGeometry(
-            new Point(circleCenter.X + 2, circleCenter.Y + 2), radius, radius);
-        dc.DrawGeometry(ShadowBrush, null, shadowGeometry);
-
-        // 底圆
-        dc.DrawGeometry(FillBrush, BorderPen, circleGeometry);
-
-        // 内容
         if (_labelMap.TryGetValue(point.LabelId, out var label))
         {
             if (label.IconImage != null)
             {
                 var imageRect = new Rect(centerX - radius, centerY - radius, width, height);
-                dc.PushClip(circleGeometry);
                 dc.DrawImage(label.IconImage, imageRect);
-                dc.Pop();
             }
             else
             {

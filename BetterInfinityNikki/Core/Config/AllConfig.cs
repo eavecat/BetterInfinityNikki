@@ -87,6 +87,7 @@ public partial class AllConfig : ObservableObject
         GameStartConfig.PropertyChanged += OnAnyPropertyChanged;
         KeyBindingsConfig.PropertyChanged += OnAnyPropertyChanged;
         OtherConfig.PropertyChanged += OnAnyPropertyChanged;
+        OtherConfig.MeiyaliConfig.PropertyChanged += OnAnyPropertyChanged;
         HardwareAccelerationConfig.PropertyChanged += OnAnyPropertyChanged;
         MaskWindowConfig.PropertyChanged += OnAnyPropertyChanged;
         AutoPickConfig.PropertyChanged += OnAnyPropertyChanged;
