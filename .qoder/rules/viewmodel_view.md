@@ -128,6 +128,63 @@ namespace BetterGenshinImpact.View.Pages
 
 ---
 
+## 设置页面 ViewModel 模式
+
+设置页面（需要绑定 `Config` 属性的页面）必须有独立 ViewModel，**不能依赖从 MainWindow 继承 DataContext**：
+
+### ViewModel
+```csharp
+public partial class ExampleSettingsPageViewModel : ViewModel
+{
+    public ExampleSettingsPageViewModel(IConfigService configService)
+    {
+        Config = configService.Get();
+    }
+    public AllConfig Config { get; set; }
+}
+```
+
+### Code-behind
+```csharp
+public partial class ExampleSettingsPage : Page
+{
+    private ExampleSettingsPageViewModel ViewModel { get; }
+
+    public ExampleSettingsPage(ExampleSettingsPageViewModel viewModel)
+    {
+        DataContext = ViewModel = viewModel;  // DataContext 设为 ViewModel 本身
+        InitializeComponent();
+    }
+}
+```
+
+### DI 注册
+```csharp
+services.AddView<ExampleSettingsPage, ExampleSettingsPageViewModel>();
+```
+
+### XAML 绑定
+```xml
+<!-- 通过 ViewModel 的 Config 属性访问配置 -->
+<ui:ToggleSwitch IsChecked="{Binding Config.CommonConfig.ExitToTray}" />
+<ui:TextBox Text="{Binding Config.OtherConfig.MyFeature.Token, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+```
+
+---
+
+## TextBox 绑定配置项
+
+TextBox 绑定配置属性时**必须加 `UpdateSourceTrigger=PropertyChanged`**，否则默认 `LostFocus` 模式下用户未移出焦点时值不会推送到源：
+```xml
+<!-- ✅ 正确：即时推送 -->
+<ui:TextBox Text="{Binding Config.OtherConfig.MyFeature.Token, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+
+<!-- ❌ 错误：需要失去焦点才推送，可能导致配置未保存 -->
+<ui:TextBox Text="{Binding Config.OtherConfig.MyFeature.Token, Mode=TwoWay}" />
+```
+
+---
+
 ## XAML 绑定规范
 
 ### 基本绑定

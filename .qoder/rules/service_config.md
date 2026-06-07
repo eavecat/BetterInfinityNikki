@@ -53,6 +53,37 @@ public partial class MyConfig : ObservableObject
 }
 ```
 
+### 嵌套配置类定义（AllConfig 体系）
+
+AllConfig 体系下的配置使用 `System.Text.Json` 序列化（CamelCase 命名策略），不是 Newtonsoft.Json。
+
+1. **嵌套配置类**必须定义为宿主配置类的 `public partial class` 嵌套类：
+   ```csharp
+   [Serializable]
+   public partial class OtherConfig : ObservableObject
+   {
+       [ObservableProperty]
+       private MyFeature _myFeatureConfig = new();
+       
+       public partial class MyFeature : ObservableObject
+       {
+           [ObservableProperty]
+           private string _token = "";
+       }
+   }
+   ```
+
+2. **配置持久化（关键）**：`AllConfig.InitEvent()` 中必须为嵌套配置单独订阅 `PropertyChanged`，否则嵌套属性修改不会触发自动保存：
+   ```csharp
+   public void InitEvent()
+   {
+       OtherConfig.PropertyChanged += OnAnyPropertyChanged;
+       // 嵌套对象的属性变更也需要单独订阅
+       OtherConfig.MyFeatureConfig.PropertyChanged += OnAnyPropertyChanged;
+   }
+   ```
+   如果遗漏订阅，用户在 UI 中修改值后不会自动保存到 `config.json`。
+
 ### 配置持久化
 ```csharp
 using Newtonsoft.Json;

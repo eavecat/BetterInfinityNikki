@@ -78,6 +78,60 @@
    services.AddSingleton<IExampleService, ExampleService>();
    ```
 
+### 配置系统规则
+
+1. **配置模型定义**
+   - 所有配置类继承 `ObservableObject`，使用 `[ObservableProperty]` 定义属性
+   - 嵌套配置类（如 `OtherConfig.Miyoushe`）必须定义为宿主配置类的 `public partial class` 嵌套类
+   - 在宿主类中使用 `[ObservableProperty]` 持有嵌套配置实例：
+     ```csharp
+     [ObservableProperty]
+     private MyNestedConfig _myNestedConfig = new();
+     ```
+
+2. **配置持久化（关键）**
+   - 配置使用 `System.Text.Json` 序列化，采用 `CamelCase` 命名策略
+   - `AllConfig.InitEvent()` 中必须为每个需要自动保存的子配置订阅 `PropertyChanged`：
+     ```csharp
+     // 直接属性变更
+     OtherConfig.PropertyChanged += OnAnyPropertyChanged;
+     // 嵌套对象的属性变更也需要单独订阅，否则嵌套属性修改不会触发保存
+     OtherConfig.MyNestedConfig.PropertyChanged += OnAnyPropertyChanged;
+     ```
+   - 如果嵌套配置的属性变更未在此订阅，用户修改后不会自动保存到 `config.json`
+
+3. **设置页面必须有独立 ViewModel**
+   - 设置页面不能依赖从 MainWindow 继承 DataContext，必须创建独立的 ViewModel
+   - ViewModel 通过 `IConfigService` 注入获取 `Config`：
+     ```csharp
+     public partial class ExampleSettingsPageViewModel : ViewModel
+     {
+         public ExampleSettingsPageViewModel(IConfigService configService)
+         {
+             Config = configService.Get();
+         }
+         public AllConfig Config { get; set; }
+     }
+     ```
+   - Page 代码后置中设置 DataContext：
+     ```csharp
+     public ExampleSettingsPage(ExampleSettingsPageViewModel viewModel)
+     {
+         DataContext = ViewModel = viewModel;
+         InitializeComponent();
+     }
+     ```
+   - 在 `App.xaml.cs` 中使用 `AddView` 注册：
+     ```csharp
+     services.AddView<ExampleSettingsPage, ExampleSettingsPageViewModel>();
+     ```
+
+4. **TextBox 绑定配置项**
+   - TextBox 绑定配置属性时必须加 `UpdateSourceTrigger=PropertyChanged`，否则默认 `LostFocus` 模式下用户未移出焦点时值不会推送：
+     ```xml
+     <ui:TextBox Text="{Binding Config.OtherConfig.MyNestedConfig.Token, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+     ```
+
 最后，程序能够编译就认为成功，无需实际运行程序。
 
 编译指令参考，如果出现程序占用场景，直接放弃编译验证即可
