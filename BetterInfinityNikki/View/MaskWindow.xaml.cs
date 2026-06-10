@@ -36,6 +36,7 @@ public partial class MaskWindow : Window
     private readonly ILogger<MaskWindow> _logger = App.GetLogger<MaskWindow>();
 
     private MaskWindowConfig? _maskWindowConfig;
+    private MapMaskConfig? _mapMaskConfig;
 
     static MaskWindow()
     {
@@ -150,6 +151,12 @@ public partial class MaskWindow : Window
         {
             _viewModel.LoadedCommand.Execute(null);
             _viewModel.PropertyChanged += ViewModelOnPropertyChanged;
+
+            if (_viewModel.Config != null)
+            {
+                _mapMaskConfig = _viewModel.Config.MapMaskConfig;
+                _mapMaskConfig.PropertyChanged += MapMaskConfigOnPropertyChanged;
+            }
         }
 
         UpdateClickThroughState();
@@ -165,9 +172,15 @@ public partial class MaskWindow : Window
             _maskWindowConfig.PropertyChanged -= MaskWindowConfigOnPropertyChanged;
         }
 
+        if (_mapMaskConfig != null)
+        {
+            _mapMaskConfig.PropertyChanged -= MapMaskConfigOnPropertyChanged;
+        }
+
         if (_viewModel != null)
         {
             _viewModel.PropertyChanged -= ViewModelOnPropertyChanged;
+            _viewModel.Cleanup();
         }
 
         base.OnClosed(e);
@@ -186,6 +199,14 @@ public partial class MaskWindow : Window
         if (e.PropertyName == nameof(MaskWindowConfig.OverlayLayoutEditEnabled))
         {
             Dispatcher.Invoke(UpdateClickThroughState);
+        }
+    }
+
+    private void MapMaskConfigOnPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(MapMaskConfig.ShowCollectedPoints))
+        {
+            MapPointsCanvas.Refresh();
         }
     }
 

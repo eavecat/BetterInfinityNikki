@@ -56,7 +56,8 @@
             <!-- 地图点位画布 -->
             <controls:PointsCanvas x:Name="MapPointsCanvas"
                                    PointsSource="{Binding MapPoints}"
-                                   LabelsSource="{Binding MapPointLabels}" />
+                                   LabelsSource="{Binding MapPointLabels}"
+                                   ShowCollectedPoints="{Binding Config.MapMaskConfig.ShowCollectedPoints}" />
 
             <!-- 状态栏 -->
             <Canvas x:Name="StatusCanvas"

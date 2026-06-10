@@ -48,6 +48,11 @@ public class MaskMapPoint
     public string LabelId { get; set; } = string.Empty;
 
     /// <summary>
+    /// 是否已被收集/获取
+    /// </summary>
+    public bool IsCollected { get; set; } = false;
+
+    /// <summary>
     /// 视频攻略链接列表
     /// </summary>
     public List<MaskMapLink> VideoUrls { get; set; } = new();

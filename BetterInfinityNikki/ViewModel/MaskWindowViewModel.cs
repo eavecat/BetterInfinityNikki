@@ -144,6 +144,10 @@ public partial class MaskWindowViewModel : ObservableObject
         try
         {
             _mapPointService = App.GetService<IMaskMapPointService>();
+            if (_mapPointService != null)
+            {
+                _mapPointService.CollectedDataUpdated += OnCollectedDataUpdated;
+            }
         }
         catch (Exception ex)
         {
@@ -543,5 +547,21 @@ public partial class MaskWindowViewModel : ObservableObject
     public void UpdateLayoutPositionsPublic()
     {
         UpdateLayoutPositions();
+    }
+
+    private void OnCollectedDataUpdated(object? sender, EventArgs e)
+    {
+        Application.Current.Dispatcher.BeginInvoke(async () =>
+        {
+            await RefreshSelectedMapPointsAsync();
+        });
+    }
+
+    public void Cleanup()
+    {
+        if (_mapPointService != null)
+        {
+            _mapPointService.CollectedDataUpdated -= OnCollectedDataUpdated;
+        }
     }
 }

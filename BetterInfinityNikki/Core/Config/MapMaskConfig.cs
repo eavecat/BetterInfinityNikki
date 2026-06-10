@@ -89,4 +89,11 @@ public partial class MapMaskConfig : ObservableObject
     /// </summary>
     [ObservableProperty]
     private bool _debugMode = false;
+
+    /// <summary>
+    /// 显示已获取的点位
+    /// false(默认) = 隐藏已获取点位，true = 以半透明方式显示已获取点位
+    /// </summary>
+    [ObservableProperty]
+    private bool _showCollectedPoints = false;
 }

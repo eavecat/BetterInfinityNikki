@@ -228,6 +228,43 @@ public sealed class NikkiMapApiService : IDisposable
         }
     }
 
+    /// <summary>
+    /// 获取用户资源收集进度
+    /// </summary>
+    public async Task<UserCollectedResponse> GetUserCollectedInfoAsync(CancellationToken ct = default)
+    {
+        var request = new UserInfoRequest
+        {
+            ClientId = ClientId,
+            Token = GetToken(),
+            OpenId = OpenId
+        };
+
+        try
+        {
+            var json = JsonSerializer.Serialize(request);
+            var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+            using var response = await _httpClient.PostAsync($"{BaseUrl}/user/info", content, ct);
+            response.EnsureSuccessStatusCode();
+
+            var responseJson = await response.Content.ReadAsStringAsync(ct);
+            var result = JsonSerializer.Deserialize<UserCollectedApiResponse>(responseJson);
+
+            if (result?.Code != 0 || result.Data == null)
+            {
+                throw new Exception($"API返回错误: Code={result?.Code}, Info={result?.Info}");
+            }
+
+            return new UserCollectedResponse { Data = result.Data };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "获取用户收集进度失败");
+            throw;
+        }
+    }
+
     public void Dispose()
     {
         _httpClient?.Dispose();

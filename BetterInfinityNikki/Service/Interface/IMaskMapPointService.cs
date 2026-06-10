@@ -29,4 +29,14 @@ public interface IMaskMapPointService
     /// 清除缓存文件并重新从API获取数据
     /// </summary>
     Task UpdateCacheAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// 从API获取用户收集进度数据并缓存到本地
+    /// </summary>
+    Task UpdateCollectedCacheAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// 收集数据缓存被更新时触发
+    /// </summary>
+    event System.EventHandler? CollectedDataUpdated;
 }

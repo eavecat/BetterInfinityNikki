@@ -50,6 +50,24 @@ public class PointsCanvas : FrameworkElement
         set => SetValue(LabelsSourceProperty, value);
     }
 
+    public static readonly DependencyProperty ShowCollectedPointsProperty =
+        DependencyProperty.Register(
+            nameof(ShowCollectedPoints),
+            typeof(bool),
+            typeof(PointsCanvas),
+            new PropertyMetadata(false, OnShowCollectedPointsChanged));
+
+    public bool ShowCollectedPoints
+    {
+        get => (bool)GetValue(ShowCollectedPointsProperty);
+        set => SetValue(ShowCollectedPointsProperty, value);
+    }
+
+    private static void OnShowCollectedPointsChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    {
+        ((PointsCanvas)d).Refresh();
+    }
+
     #endregion
 
     private static void OnPointsSourceChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
@@ -240,17 +258,28 @@ public class PointsCanvas : FrameworkElement
                 continue;
             }
 
+            if (point.IsCollected && !ShowCollectedPoints)
+            {
+                continue;
+            }
+
             var localX = (point.ImageX - _viewportRect.X) * scaleX;
             var localY = (point.ImageY - _viewportRect.Y) * scaleY;
 
-            DrawPoint(dc, point, localX, localY, MaskMapPointStatic.Width, MaskMapPointStatic.Height);
+            var opacity = point.IsCollected && ShowCollectedPoints ? 0.7 : 1.0;
+            DrawPoint(dc, point, localX, localY, MaskMapPointStatic.Width, MaskMapPointStatic.Height, opacity);
         }
     }
 
-    private void DrawPoint(DrawingContext dc, MaskMapPoint point, double centerX, double centerY, double width, double height)
+    private void DrawPoint(DrawingContext dc, MaskMapPoint point, double centerX, double centerY, double width, double height, double opacity = 1.0)
     {
         double radius = width / 2.0;
         var circleCenter = new Point(centerX, centerY);
+
+        if (opacity < 1.0)
+        {
+            dc.PushOpacity(opacity);
+        }
 
         if (_labelMap.TryGetValue(point.LabelId, out var label))
         {
@@ -269,6 +298,11 @@ public class PointsCanvas : FrameworkElement
             var brush = new SolidColorBrush(GenerateRandomColor(point.Id));
             brush.Freeze();
             dc.DrawEllipse(brush, null, circleCenter, radius, radius);
+        }
+
+        if (opacity < 1.0)
+        {
+            dc.Pop();
         }
     }
 

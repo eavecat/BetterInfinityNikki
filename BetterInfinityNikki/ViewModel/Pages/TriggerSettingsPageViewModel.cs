@@ -20,6 +20,10 @@ public partial class TriggerSettingsPageViewModel : ViewModel
 
     public bool CanUpdateMapPointCache => !IsUpdatingMapPointCache;
 
+    [ObservableProperty] private bool _isUpdatingCollectedCache;
+
+    public bool CanUpdateCollectedCache => !IsUpdatingCollectedCache;
+
     public AllConfig Config { get; set; }
 
     private readonly IMaskMapPointService _mapPointService;
@@ -56,6 +60,11 @@ public partial class TriggerSettingsPageViewModel : ViewModel
         OnPropertyChanged(nameof(CanUpdateMapPointCache));
     }
 
+    partial void OnIsUpdatingCollectedCacheChanged(bool value)
+    {
+        OnPropertyChanged(nameof(CanUpdateCollectedCache));
+    }
+
     [RelayCommand]
     private async Task RefreshMapPointCacheAsync()
     {
@@ -72,6 +81,25 @@ public partial class TriggerSettingsPageViewModel : ViewModel
         finally
         {
             IsUpdatingMapPointCache = false;
+        }
+    }
+
+    [RelayCommand]
+    private async Task RefreshCollectedCacheAsync()
+    {
+        IsUpdatingCollectedCache = true;
+        try
+        {
+            await _mapPointService.UpdateCollectedCacheAsync();
+            await ThemedMessageBox.SuccessAsync("收集进度数据已更新完成");
+        }
+        catch (Exception ex)
+        {
+            await ThemedMessageBox.ErrorAsync($"更新收集进度缓存失败：{ex.Message}");
+        }
+        finally
+        {
+            IsUpdatingCollectedCache = false;
         }
     }
 

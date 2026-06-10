@@ -13,12 +13,18 @@ public sealed class MaskMapPointService : IMaskMapPointService
     private static readonly string CacheDir = Global.Absolute(Path.Combine("User", "Cache", "MaskMapData"));
     private static readonly string CatalogCachePath = Path.Combine(CacheDir, "catalog_list.json");
     private static readonly string SpawnerCachePath = Path.Combine(CacheDir, "spawner_list.json");
+    private static readonly string CollectedCachePath = Path.Combine(CacheDir, "user_collected.json");
 
     private readonly ILogger<MaskMapPointService> _logger;
     private readonly NikkiMapApiService _apiService;
 
     private List<Spawner>? _allSpawners;
     private readonly SemaphoreSlim _loadLock = new(1, 1);
+
+    private HashSet<int> _collectedSpawnerIds = new();
+    private bool _collectedDataLoaded = false;
+
+    public event EventHandler? CollectedDataUpdated;
 
     public MaskMapPointService(ILogger<MaskMapPointService> logger, NikkiMapApiService apiService)
     {
@@ -129,6 +135,7 @@ public sealed class MaskMapPointService : IMaskMapPointService
             }
 
             await EnsureAllPointsLoadedAsync(ct);
+            await EnsureCollectedDataLoadedAsync(ct);
 
             var selectedIds = new HashSet<int>();
             foreach (var item in selectedItems)
@@ -163,7 +170,8 @@ public sealed class MaskMapPointService : IMaskMapPointService
                     GameY = gameY,
                     ImageX = imageX,
                     ImageY = imageY,
-                    LabelId = spawner.Catalog.ToString()
+                    LabelId = spawner.Catalog.ToString(),
+                    IsCollected = _collectedSpawnerIds.Contains(spawner.Id)
                 });
             }
 
@@ -319,5 +327,81 @@ public sealed class MaskMapPointService : IMaskMapPointService
         {
             _loadLock.Release();
         }
+    }
+
+    private async Task EnsureCollectedDataLoadedAsync(CancellationToken ct)
+    {
+        if (_collectedDataLoaded) return;
+
+        await _loadLock.WaitAsync(ct);
+        try
+        {
+            if (_collectedDataLoaded) return;
+
+            if (File.Exists(CollectedCachePath))
+            {
+                try
+                {
+                    var json = await File.ReadAllTextAsync(CollectedCachePath, ct);
+                    var data = JsonSerializer.Deserialize<UserCollectedData>(json);
+                    if (data != null)
+                    {
+                        _collectedSpawnerIds = FlattenCollectedIds(data);
+                    }
+                    _logger.LogDebug("从缓存加载收集数据，共 {Count} 个已收集点位", _collectedSpawnerIds.Count);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "读取收集缓存失败，将跳过收集过滤");
+                    _collectedSpawnerIds = new HashSet<int>();
+                }
+            }
+
+            _collectedDataLoaded = true;
+        }
+        finally
+        {
+            _loadLock.Release();
+        }
+    }
+
+    private static HashSet<int> FlattenCollectedIds(UserCollectedData data)
+    {
+        var set = new HashSet<int>();
+        set.UnionWith(data.Box);
+        set.UnionWith(data.Cruise);
+        set.UnionWith(data.Dewdrop);
+        set.UnionWith(data.Pillar);
+        set.UnionWith(data.Read);
+        set.UnionWith(data.Star);
+        return set;
+    }
+
+    public async Task UpdateCollectedCacheAsync(CancellationToken ct = default)
+    {
+        await _loadLock.WaitAsync(ct);
+        try
+        {
+            var response = await _apiService.GetUserCollectedInfoAsync(ct);
+            var data = response?.Data;
+
+            if (data != null)
+            {
+                Directory.CreateDirectory(CacheDir);
+                var json = JsonSerializer.Serialize(data);
+                await File.WriteAllTextAsync(CollectedCachePath, json, ct);
+
+                _collectedSpawnerIds = FlattenCollectedIds(data);
+                _collectedDataLoaded = true;
+
+                _logger.LogInformation("收集数据缓存已更新，共 {Count} 个已收集点位", _collectedSpawnerIds.Count);
+            }
+        }
+        finally
+        {
+            _loadLock.Release();
+        }
+
+        CollectedDataUpdated?.Invoke(this, EventArgs.Empty);
     }
 }
