@@ -221,16 +221,19 @@ public sealed class MaskMapPointService : IMaskMapPointService
             var urlList = new List<MaskMapLink>();
             if (!string.IsNullOrWhiteSpace(data.LinkHref))
             {
+                var linkTitle = NikkiMapApiService.ParseMultiLangText(data.LinkTitle, "zh-cn");
                 urlList.Add(new MaskMapLink
                 {
-                    Text = string.IsNullOrWhiteSpace(data.LinkTitle) ? "视频攻略" : data.LinkTitle,
+                    Text = string.IsNullOrWhiteSpace(linkTitle) ? "视频攻略" : linkTitle,
                     Url = data.LinkHref
                 });
             }
 
+            var description = NikkiMapApiService.ParseMultiLangText(data.Description, "zh-cn");
+
             return new MaskMapPointInfo
             {
-                Text = string.IsNullOrWhiteSpace(data.Description) ? "暂无描述" : data.Description,
+                Text = string.IsNullOrWhiteSpace(description) ? "暂无描述" : description,
                 ImageUrl = data.Icon,
                 UrlList = urlList
             };

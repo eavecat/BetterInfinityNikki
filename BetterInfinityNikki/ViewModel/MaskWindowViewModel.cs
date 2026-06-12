@@ -15,6 +15,8 @@ public partial class MaskWindowViewModel : ObservableObject
 
     public AllConfig? Config { get; set; }
 
+    public MaskMapPointInfoPopupViewModel PointInfoPopup { get; } = new();
+
     [ObservableProperty]
     private ObservableCollection<StatusItem> _statusList = [];
 
@@ -486,6 +488,30 @@ public partial class MaskWindowViewModel : ObservableObject
     }
 
     #endregion
+
+    partial void OnIsInBigMapUiChanged(bool value)
+    {
+        if (!value)
+        {
+            PointInfoPopup.Close();
+        }
+    }
+
+    [RelayCommand]
+    private async Task OnPointClick(MaskMapPointClickArgs? args)
+    {
+        var point = args?.Point;
+        if (point == null || !IsInBigMapUi) return;
+
+        var title = ResolvePointTitle(point);
+        await PointInfoPopup.ShowAsync(point, args!.AnchorPosition, title);
+    }
+
+    private string ResolvePointTitle(MaskMapPoint point)
+    {
+        var label = MapPointLabels.FirstOrDefault(l => l.LabelId == point.LabelId);
+        return label?.Name ?? $"点位 {point.Id}";
+    }
 
     [RelayCommand]
     private void OnWindowSizeChanged(SizeChangedEventArgs args)

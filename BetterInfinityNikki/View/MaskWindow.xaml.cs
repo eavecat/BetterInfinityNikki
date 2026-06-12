@@ -161,12 +161,16 @@ public partial class MaskWindow : Window
 
         UpdateClickThroughState();
 
+        MapPointsCanvas.ViewportChanged += OnPointsCanvasViewportChanged;
+
         RefreshPosition();
         PrintSystemInfo();
     }
 
     protected override void OnClosed(EventArgs e)
     {
+        MapPointsCanvas.ViewportChanged -= OnPointsCanvasViewportChanged;
+
         if (_maskWindowConfig != null)
         {
             _maskWindowConfig.PropertyChanged -= MaskWindowConfigOnPropertyChanged;
@@ -208,6 +212,11 @@ public partial class MaskWindow : Window
         {
             MapPointsCanvas.Refresh();
         }
+    }
+
+    private void OnPointsCanvasViewportChanged(object? sender, EventArgs e)
+    {
+        _viewModel?.PointInfoPopup.Close();
     }
 
     private void UpdateClickThroughState()

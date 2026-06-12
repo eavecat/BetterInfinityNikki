@@ -8,7 +8,8 @@
 - ✅ 已实现：视口更新机制、大地图界面检测、点位服务集成（含缓存与图标加载）
 - ✅ 已实现：点位选择器（分类树、搜索、标签选择、异步图标加载）
 - ✅ 已实现：点位在遮罩层上的渲染、Web/Game/Image 三坐标转换与校准
-- ❌ 未实现：点位交互命令、点位信息弹窗
+- ✅ 已实现：点位左键点击交互、命中测试、点位信息弹窗（描述、图片、视频链接）
+- ✅ 已实现：已获取点位过滤（隐藏/半透明显示）、收集进度缓存更新
 - ❌ 未实现：增强功能（小地图、方位指示器、FPS、UID遮盖等）
 
 ---
@@ -102,45 +103,47 @@
 
 ## 🟡 中优先级（交互功能）
 
-### 4. 点位点击/右键/悬停命令
-**状态**: PointsCanvas 支持这些事件，但未绑定命令
+### 4. 点位点击/悬停命令
+**状态**: ✅ 已完成（左键点击 + 悬停光标）
 
-**需要实现**:
-- [ ] 在 `MaskWindowViewModel` 中添加三个命令：
-  - `PointClickCommand` - 点位左键点击
-  - `PointRightClickCommand` - 点位右键点击
-  - `PointHoverCommand` - 点位悬停
-- [ ] 在 XAML 中绑定这些命令到 PointsCanvas
-- [ ] 实现命令的具体逻辑（如显示弹窗、标记路径等）
+**已实现**:
+- [x] 在 `PointsCanvas` 中添加 `PointClickCommand` 依赖属性
+- [x] 实现 `HitTest()` 命中测试（视口坐标转换 + 矩形包含测试）
+- [x] 实现 `TryGetPointCenterPosition()` 计算点位屏幕中心坐标
+- [x] 在 `MaskWindowViewModel` 中添加 `OnPointClick` 命令
+- [x] 在 XAML 中绑定 `PointClickCommand` 到 PointsCanvas
+- [x] 鼠标悬停时切换 Hand/Arrow 光标
+
+**未实现**:
+- [ ] `PointRightClickCommand` - 右键点击（暂无需求）
+- [ ] `PointHoverCommand` - 悬停命令（暂无需求）
 
 **相关文件**:
-- `ViewModel/MaskWindowViewModel.cs`
-- `View/MaskWindow.xaml`
-- `View/Controls/PointsCanvas.cs`
-
-**BGI 参考**:
-- `MaskWindow.xaml` 中的命令绑定
-- `MaskWindowViewModel.cs` 中的命令实现
+- `View/Controls/PointsCanvas.cs` - 命中测试、鼠标事件、命令依赖属性
+- `ViewModel/MaskWindowViewModel.cs` - `OnPointClickCommand`
+- `Model/MaskMap/MaskMapPointClickArgs.cs` - 点击事件参数模型（新建）
+- `View/MaskWindow.xaml` - 命令绑定
 
 ---
 
 ### 5. 点位信息弹窗 (PointInfoPopup)
-**状态**: 完全缺失
+**状态**: ✅ 已完成
 
-**需要实现**:
-- [ ] 创建点位信息弹窗 UI（Popup 控件）
-- [ ] 显示点位名称、坐标、视频教程链接等信息
-- [ ] 实现弹窗的打开/关闭逻辑
-- [ ] 添加视频链接跳转功能
-- [ ] 添加关闭按钮
+**已实现**:
+- [x] 创建 `MaskMapPointInfoPopupViewModel`（ShowAsync/Close/OpenUrl）
+- [x] 创建点位信息弹窗 UI（Popup 控件），包含标题、关闭按钮、加载指示器、URL链接按钮、图片区域、描述文本
+- [x] 实现弹窗的打开/关闭逻辑（含 CancellationToken 取消机制）
+- [x] 添加视频链接跳转功能（Process.Start + URL 规范化）
+- [x] 视口变化时自动关闭弹窗（ViewportChanged 事件）
+- [x] 离开大地图界面时自动关闭弹窗
+- [x] `GetPointInfoAsync` 中 Description/LinkTitle 使用 `ParseMultiLangText` 解析多语言 JSON
 
 **相关文件**:
-- `View/MaskWindow.xaml`（添加 Popup）
-- `ViewModel/MaskWindowViewModel.cs`（添加 PointInfoPopup 状态）
-- `Model/MaskMap/MaskMapPoint.cs`（可能需要扩展字段）
-
-**BGI 参考**:
-- `MaskWindow.xaml` 第 491-679 行的 Popup 实现
+- `ViewModel/MaskMapPointInfoPopupViewModel.cs`（新建）
+- `View/MaskWindow.xaml`（添加 Popup，约 180 行）
+- `ViewModel/MaskWindowViewModel.cs`（添加 PointInfoPopup 属性、OnPointClick 命令）
+- `View/MaskWindow.xaml.cs`（添加 ViewportChanged 订阅）
+- `Service/MaskMapPointService.cs`（Description 多语言解析）
 
 ---
 
@@ -360,19 +363,13 @@ private bool _isMapLabelTreeLoading;
 private bool _isLoadingPoints;
 ```
 
-## 📝 ViewModel 待添加的属性
+## 📝 ViewModel 已添加的属性（点位交互）
+
+在 `MaskWindowViewModel.cs` 中已添加以下属性：
 
 ```csharp
 // 点位信息弹窗
-[ObservableProperty]
-private PointInfoPopupState _pointInfoPopup;
-
-// 窗口尺寸（已有）
-[ObservableProperty]
-private double _maskWindowWidth;
-
-[ObservableProperty]
-private double _maskWindowHeight;
+public MaskMapPointInfoPopupViewModel PointInfoPopup { get; } = new();
 ```
 
 ---
@@ -407,19 +404,18 @@ private async Task ClearSelectedLabelsAsync();
 private async Task ResetSelectedMapLabelSelectionAsync();
 ```
 
-## 📝 ViewModel 待添加的命令
+## 📝 ViewModel 已添加的命令（点位交互）
+
+在 `MaskWindowViewModel.cs` 中已添加以下命令：
 
 ```csharp
-// 点位交互命令
+// 点位左键点击 → 显示信息弹窗
 [RelayCommand]
-private async Task OnPointClick(MaskMapPoint point);
+private async Task OnPointClick(MaskMapPointClickArgs? args);
+```
 
-[RelayCommand]
-private async Task OnPointRightClick(MaskMapPoint point);
-
-[RelayCommand]
-private async Task OnPointHover(MaskMapPoint point);
-
+**未实现**:
+```csharp
 // 退出编辑模式
 [RelayCommand]
 private void OnExitOverlayLayoutEditMode();
@@ -433,12 +429,14 @@ private void OnExitOverlayLayoutEditMode();
 - `View/MaskWindow.xaml` - 遮罩窗口 UI
 - `View/MaskWindow.xaml.cs` - 遮罩窗口逻辑
 - `ViewModel/MaskWindowViewModel.cs` - 遮罩窗口 ViewModel
-- `View/Controls/PointsCanvas.cs` - 点位画布控件
+- `ViewModel/MaskMapPointInfoPopupViewModel.cs` - 点位信息弹窗 ViewModel（新建）
+- `View/Controls/PointsCanvas.cs` - 点位画布控件（含命中测试）
 - `GameTask/MapMask/MapMaskTrigger.cs` - 地图遮罩触发器
 
 ### 数据模型
 - `Model/MaskMap/MaskMapPoint.cs` - 点位数据模型
 - `Model/MaskMap/MaskMapPointLabel.cs` - 点位标签模型
+- `Model/MaskMap/MaskMapPointClickArgs.cs` - 点击事件参数模型（新建）
 - `Model/MaskMap/MaskMapLink.cs` - 点位链接模型
 
 ### 服务层
@@ -475,13 +473,14 @@ private void OnExitOverlayLayoutEditMode();
 
 **目标**: 让点位能够正确显示并跟随地图移动 ✅
 
-### 第二阶段：交互功能（部分完成）
-4. ❌ 点位点击/右键/悬停命令
-5. ❌ 点位信息弹窗
+### 第二阶段：交互功能（已完成 ✅）
+4. ✅ 点位左键点击命令 + 悬停光标
+5. ✅ 点位信息弹窗
 6. ✅ 点位选择器
 7. ✅ 点位渲染（PointsCanvas 绘制 + 坐标转换校准）
+8. ✅ 已获取点位过滤（隐藏/半透明 + 收集进度缓存）
 
-**目标**: 提供完整的用户交互体验（进行中）
+**目标**: 提供完整的用户交互体验 ✅
 
 ### 第三阶段：增强功能（未开始）
 8-15. 其他增强功能（小地图、方位指示器、FPS、UID遮盖、编辑模式、Wine 兼容、技能 CD、可调整布局）
@@ -492,4 +491,4 @@ private void OnExitOverlayLayoutEditMode();
 
 ## 📅 更新时间
 
-最后更新: 2026-06-07
+最后更新: 2026-06-12

@@ -3,10 +3,14 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Linq;
+using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Input;
 using System.Windows.Media;
 using BetterInfinityNikki.Model.MaskMap;
+using CommunityToolkit.Mvvm.Input;
 
 namespace BetterInfinityNikki.View.Controls;
 
@@ -21,6 +25,8 @@ public class PointsCanvas : FrameworkElement
     private List<MaskMapPoint> _allPoints = new();
     private Dictionary<string, MaskMapPointLabel> _labelMap = new();
     private Rect _viewportRect = Rect.Empty;
+
+    public event EventHandler? ViewportChanged;
 
     #region 依赖属性
 
@@ -68,6 +74,19 @@ public class PointsCanvas : FrameworkElement
         ((PointsCanvas)d).Refresh();
     }
 
+    public static readonly DependencyProperty PointClickCommandProperty =
+        DependencyProperty.Register(
+            nameof(PointClickCommand),
+            typeof(ICommand),
+            typeof(PointsCanvas),
+            new PropertyMetadata(null));
+
+    public ICommand PointClickCommand
+    {
+        get => (ICommand)GetValue(PointClickCommandProperty);
+        set => SetValue(PointClickCommandProperty, value);
+    }
+
     #endregion
 
     private static void OnPointsSourceChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
@@ -88,6 +107,8 @@ public class PointsCanvas : FrameworkElement
         _colorBrushCache = new Dictionary<string, Brush>();
         IsHitTestVisible = true;
         SizeChanged += OnSizeChanged;
+        MouseLeftButtonDown += OnMouseLeftButtonDown;
+        MouseMove += OnMouseMove;
     }
 
     private void OnSizeChanged(object sender, SizeChangedEventArgs e)
@@ -343,6 +364,106 @@ public class PointsCanvas : FrameworkElement
 
     #endregion
 
+    #region 鼠标交互
+
+    private static async Task ExecuteAsyncRelayCommandSafe(IAsyncRelayCommand command, object? parameter)
+    {
+        try
+        {
+            await command.ExecuteAsync(parameter);
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine(ex);
+        }
+    }
+
+    private bool TryGetPointCenterPosition(MaskMapPoint point, out Point center)
+    {
+        center = default;
+        if (_viewportRect.IsEmpty) return false;
+
+        var aw = ActualWidth;
+        var ah = ActualHeight;
+        if (aw <= 0 || ah <= 0) return false;
+
+        var scaleX = aw / _viewportRect.Width;
+        var scaleY = ah / _viewportRect.Height;
+        center = new Point(
+            (point.ImageX - _viewportRect.X) * scaleX,
+            (point.ImageY - _viewportRect.Y) * scaleY);
+        return true;
+    }
+
+    private MaskMapPoint? HitTest(Point position)
+    {
+        if (_allPoints.Count == 0) return null;
+
+        for (int i = _allPoints.Count - 1; i >= 0; i--)
+        {
+            var point = _allPoints[i];
+
+            if (_viewportRect.IsEmpty)
+            {
+                if (point.Contains(position.X, position.Y)) return point;
+                continue;
+            }
+
+            if (!_viewportRect.Contains(point.ImageX, point.ImageY)) continue;
+
+            var aw = ActualWidth;
+            var ah = ActualHeight;
+            if (aw <= 0 || ah <= 0)
+            {
+                if (point.Contains(position.X, position.Y)) return point;
+                continue;
+            }
+
+            var scaleX = aw / _viewportRect.Width;
+            var scaleY = ah / _viewportRect.Height;
+            var localX = (point.ImageX - _viewportRect.X) * scaleX;
+            var localY = (point.ImageY - _viewportRect.Y) * scaleY;
+            var localW = MaskMapPointStatic.Width * scaleX;
+            var localH = MaskMapPointStatic.Height * scaleY;
+            var rect = new Rect(localX - localW / 2.0, localY - localH / 2.0, localW, localH);
+            if (rect.Contains(position)) return point;
+        }
+
+        return null;
+    }
+
+    private async void OnMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        var position = e.GetPosition(this);
+        var point = HitTest(position);
+        if (point == null) return;
+
+        var anchor = TryGetPointCenterPosition(point, out var center) ? center : position;
+        var args = new MaskMapPointClickArgs(point, anchor);
+
+        if (PointClickCommand is IAsyncRelayCommand asyncCommand)
+        {
+            if (asyncCommand.CanExecute(args))
+            {
+                e.Handled = true;
+                await ExecuteAsyncRelayCommandSafe(asyncCommand, args);
+            }
+        }
+        else if (PointClickCommand?.CanExecute(args) == true)
+        {
+            PointClickCommand.Execute(args);
+            e.Handled = true;
+        }
+    }
+
+    private void OnMouseMove(object sender, MouseEventArgs e)
+    {
+        var position = e.GetPosition(this);
+        Cursor = HitTest(position) != null ? Cursors.Hand : Cursors.Arrow;
+    }
+
+    #endregion
+
     #region 公共方法
 
     public void UpdateViewport(double x, double y, double width, double height)
@@ -354,6 +475,7 @@ public class PointsCanvas : FrameworkElement
         }
 
         _viewportRect = newRect;
+        ViewportChanged?.Invoke(this, EventArgs.Empty);
         Refresh();
     }
 

@@ -57,7 +57,8 @@
             <controls:PointsCanvas x:Name="MapPointsCanvas"
                                    PointsSource="{Binding MapPoints}"
                                    LabelsSource="{Binding MapPointLabels}"
-                                   ShowCollectedPoints="{Binding Config.MapMaskConfig.ShowCollectedPoints}" />
+                                   ShowCollectedPoints="{Binding Config.MapMaskConfig.ShowCollectedPoints}"
+                                   PointClickCommand="{Binding PointClickCommand}" />
 
             <!-- 状态栏 -->
             <Canvas x:Name="StatusCanvas"
@@ -660,6 +661,173 @@
                     </Grid>
                 </Grid>
             </Grid>
+
+            <!-- 点位信息弹窗 -->
+            <Popup AllowsTransparency="True"
+                   IsOpen="{Binding PointInfoPopup.IsOpen}"
+                   PlacementTarget="{Binding ElementName=MapPointsCanvas}"
+                   Placement="Top"
+                   PlacementRectangle="{Binding PointInfoPopup.PlacementRect}"
+                   HorizontalOffset="-164"
+                   VerticalOffset="-8"
+                   StaysOpen="True">
+                <Border Width="360"
+                        Background="#C81F232A"
+                        BorderBrush="#26FFFFFF"
+                        BorderThickness="1"
+                        CornerRadius="12"
+                        DataContext="{Binding PointInfoPopup}">
+                    <Border.Effect>
+                        <DropShadowEffect Opacity="0.7" BlurRadius="28" ShadowDepth="0" Color="#FF000000" />
+                    </Border.Effect>
+                    <Grid Margin="12">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                        </Grid.RowDefinitions>
+
+                        <Grid Grid.Row="0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0"
+                                       FontSize="14"
+                                       FontWeight="SemiBold"
+                                       Foreground="White"
+                                       Text="{Binding Title}"
+                                       TextTrimming="CharacterEllipsis" />
+                            <ui:Button Grid.Column="1"
+                                       Width="28"
+                                       Height="28"
+                                       Padding="0"
+                                       Margin="8,-2,-2,0"
+                                       Background="Transparent"
+                                       BorderBrush="{x:Null}"
+                                       Cursor="Hand"
+                                       Command="{Binding CloseCommand}"
+                                       Content="✕" />
+                        </Grid>
+
+                        <StackPanel Grid.Row="1" Margin="0,10,0,0">
+                            <!-- 加载中 -->
+                            <StackPanel Orientation="Horizontal"
+                                        Height="16"
+                                        Visibility="{Binding IsTextLoading, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                <ui:ProgressRing Width="16" Height="16" IsIndeterminate="True" Margin="0,0,8,0" />
+                                <TextBlock Foreground="#B3FFFFFF" Text="正在加载文本..." />
+                            </StackPanel>
+
+                            <!-- 错误信息 -->
+                            <TextBlock Margin="0,6,0,0"
+                                       Foreground="#B3FFFFFF"
+                                       TextWrapping="Wrap"
+                                       Visibility="{Binding TextError, Converter={StaticResource BooleanToVisibilityRevertConverter}}"
+                                       Text="{Binding TextError}" />
+
+                            <!-- URL链接按钮列表 -->
+                            <ItemsControl Margin="0,8,0,0"
+                                          ItemsSource="{Binding UrlList}"
+                                          Visibility="{Binding HasUrlList, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <WrapPanel />
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Button Margin="0,0,8,8"
+                                                Padding="10,4"
+                                                Background="#2FFFFFFF"
+                                                BorderBrush="#26FFFFFF"
+                                                BorderThickness="1"
+                                                Cursor="Hand"
+                                                ToolTip="{Binding Url}"
+                                                Command="{Binding DataContext.OpenUrlCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                CommandParameter="{Binding Url}">
+                                            <Button.Template>
+                                                <ControlTemplate TargetType="{x:Type Button}">
+                                                    <Border Background="{TemplateBinding Background}"
+                                                            BorderBrush="{TemplateBinding BorderBrush}"
+                                                            BorderThickness="{TemplateBinding BorderThickness}"
+                                                            CornerRadius="10"
+                                                            Padding="{TemplateBinding Padding}">
+                                                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                    </Border>
+                                                </ControlTemplate>
+                                            </Button.Template>
+                                            <TextBlock Foreground="White" FontSize="12" Text="{Binding DisplayText}" />
+                                        </Button>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+
+                            <!-- 图片区域 -->
+                            <Border Margin="0,10,0,0"
+                                    CornerRadius="8"
+                                    ClipToBounds="True"
+                                    Visibility="{Binding HasImage, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                <Grid>
+                                    <Image Source="{Binding Image}"
+                                           HorizontalAlignment="Stretch"
+                                           VerticalAlignment="Top"
+                                           Stretch="Uniform">
+                                        <Image.Style>
+                                            <Style TargetType="{x:Type Image}">
+                                                <Setter Property="Visibility" Value="Visible" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding Image}" Value="{x:Null}">
+                                                        <Setter Property="Visibility" Value="Collapsed" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Image.Style>
+                                    </Image>
+
+                                    <StackPanel Orientation="Horizontal"
+                                                HorizontalAlignment="Center"
+                                                VerticalAlignment="Center"
+                                                Visibility="{Binding IsImageLoading, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                        <ui:ProgressRing Width="16" Height="16" IsIndeterminate="True" Margin="0,0,8,0" />
+                                        <TextBlock Foreground="#B3FFFFFF" Text="图片加载中..." />
+                                    </StackPanel>
+
+                                    <TextBlock HorizontalAlignment="Center"
+                                               VerticalAlignment="Center"
+                                               Foreground="#B3FFFFFF"
+                                               TextWrapping="Wrap"
+                                               Visibility="{Binding ImageError, Converter={StaticResource BooleanToVisibilityRevertConverter}}"
+                                               Text="{Binding ImageError}" />
+                                </Grid>
+                            </Border>
+
+                            <!-- 描述文本 -->
+                            <ScrollViewer Margin="0,8,0,0"
+                                          VerticalScrollBarVisibility="Auto"
+                                          HorizontalScrollBarVisibility="Disabled"
+                                          MaxHeight="220">
+                                <ScrollViewer.Style>
+                                    <Style TargetType="{x:Type ScrollViewer}">
+                                        <Setter Property="Visibility" Value="Collapsed" />
+                                        <Style.Triggers>
+                                            <MultiDataTrigger>
+                                                <MultiDataTrigger.Conditions>
+                                                    <Condition Binding="{Binding IsTextLoading}" Value="False" />
+                                                    <Condition Binding="{Binding TextError}" Value="" />
+                                                </MultiDataTrigger.Conditions>
+                                                <Setter Property="Visibility" Value="Visible" />
+                                            </MultiDataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </ScrollViewer.Style>
+                                <TextBlock Foreground="#E6FFFFFF"
+                                           Text="{Binding Text}"
+                                           TextWrapping="Wrap" />
+                            </ScrollViewer>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+            </Popup>
         </Grid>
     </AdornerDecorator>
 </Window>
