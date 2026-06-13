@@ -1,6 +1,5 @@
 using System;
 using System.Threading;
-using System.Threading.Tasks;
 using BetterInfinityNikki.Core.Config;
 using BetterInfinityNikki.Core.Recognition;
 using BetterInfinityNikki.GameTask;
@@ -69,7 +68,7 @@ public class MapMaskTrigger : ITaskTrigger
     }
 
     /// <summary>
-    /// 接收每帧截图内容并驱动大地图/小地图的异步定位与UI更新
+    /// 接收每帧截图内容并驱动大地图的异步定位与UI更新
     /// </summary>
     /// <param name="content">捕获到的画面内容</param>
     public void OnCapture(CaptureContent content)
@@ -99,20 +98,16 @@ public class MapMaskTrigger : ITaskTrigger
 
             if (inBigMapUi && _config.Enabled)
             {
-                // 计算大地图视口位置
                 var viewport = CalculateBigMapViewport(content);
 
                 if (viewport.HasValue)
                 {
-                    QueueUiUpdate(new PendingUiUpdate
-                    {
-                        BigMapViewport = viewport.Value
-                    });
+                    QueueUiUpdate(viewport.Value);
                 }
             }
             else
             {
-                QueueUiUpdate(new PendingUiUpdate());
+                QueueUiUpdate(null);
             }
         }
         catch (Exception e)
@@ -177,13 +172,13 @@ public class MapMaskTrigger : ITaskTrigger
         try
         {
             var region = content.CaptureRectArea;
-            
+
             // 获取灰度化的大地图截图
             using var greyMat = region.CacheGreyMat.Clone();
-            
+
             // 调用世界地图的 GetBigMapRect 方法（支持自适应搜索）
             var rect = _worldMap.GetBigMapRect(greyMat, _prevRect);
-            
+
             if (rect != default)
             {
                 // 验证矩形尺寸是否合理（地图坐标空间 16384x16384）
@@ -194,16 +189,16 @@ public class MapMaskTrigger : ITaskTrigger
                     _prevRect = default;
                     return null;
                 }
-                
+
                 // 更新上一帧位置（用于自适应搜索）
                 _prevRect = rect;
-                
+
                 // 转换为 System.Windows.Rect
                 var resultRect = new Rect(rect.X, rect.Y, rect.Width, rect.Height);
                 _logger.LogDebug("大地图视口检测成功: {Rect}", resultRect);
                 return resultRect;
             }
-            
+
             // 匹配失败时重置 prevRect，下次使用全图搜索
             if (_prevRect != default)
             {
@@ -223,20 +218,19 @@ public class MapMaskTrigger : ITaskTrigger
         }
     }
 
-    private sealed class PendingUiUpdate
-    {
-        public Rect? BigMapViewport { get; init; }
-    }
-
-    private PendingUiUpdate? _pendingUiUpdate;
+    private Rect? _pendingViewport;
     private int _uiApplyScheduled;
+    private readonly object _viewportLock = new();
 
     /// <summary>
     /// 合并并异步投递UI更新
     /// </summary>
-    private void QueueUiUpdate(PendingUiUpdate update)
+    private void QueueUiUpdate(Rect? viewport)
     {
-        Interlocked.Exchange(ref _pendingUiUpdate, update);
+        lock (_viewportLock)
+        {
+            _pendingViewport = viewport;
+        }
         TryScheduleUiApply();
     }
 
@@ -256,34 +250,33 @@ public class MapMaskTrigger : ITaskTrigger
     /// </summary>
     private void ApplyPendingUiUpdate()
     {
-        var update = Interlocked.Exchange(ref _pendingUiUpdate, null);
-        if (update != null)
+        Rect? viewport;
+        lock (_viewportLock)
         {
-            var window = MaskWindow.InstanceNullable();
+            viewport = _pendingViewport;
+            _pendingViewport = null;
+        }
+        var window = MaskWindow.InstanceNullable();
 
-            if (!_config.Enabled)
-            {
-                window?.MapPointsCanvas?.UpdateViewport(0, 0, 0, 0);
-                Interlocked.Exchange(ref _uiApplyScheduled, 0);
-                return;
-            }
+        if (!_config.Enabled)
+        {
+            window?.MapPointsCanvas?.UpdateViewport(0, 0, 0, 0);
+            Interlocked.Exchange(ref _uiApplyScheduled, 0);
+            return;
+        }
 
-            if (update.BigMapViewport is { } viewport)
-            {
-                window?.MapPointsCanvas?.UpdateViewport(
-                    viewport.X, viewport.Y,
-                    viewport.Width, viewport.Height);
-            }
-            else
-            {
-                window?.MapPointsCanvas?.UpdateViewport(0, 0, 0, 0);
-            }
+        if (viewport.HasValue)
+        {
+            window?.MapPointsCanvas?.UpdateViewport(
+                viewport.Value.X, viewport.Value.Y,
+                viewport.Value.Width, viewport.Value.Height);
+        }
+        else
+        {
+            // null 表示不在大地图，清空视口
+            window?.MapPointsCanvas?.UpdateViewport(0, 0, 0, 0);
         }
 
         Interlocked.Exchange(ref _uiApplyScheduled, 0);
-        if (Volatile.Read(ref _pendingUiUpdate) != null)
-        {
-            TryScheduleUiApply();
-        }
     }
 }

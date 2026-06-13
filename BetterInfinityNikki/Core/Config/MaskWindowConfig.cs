@@ -106,4 +106,22 @@ public partial class MaskWindowConfig : ObservableObject
     /// </summary>
     [ObservableProperty]
     private double _statusListHeightRatio = 24.0 / 1080;
+
+    /// <summary>
+    /// 小地图遮罩左侧位置比例（相对于窗口宽度，1080p下X=74）
+    /// </summary>
+    [ObservableProperty]
+    private double _miniMapOverlayLeftRatio = 74.0 / 1920;
+
+    /// <summary>
+    /// 小地图遮罩顶部位置比例（相对于窗口高度，1080p下Y=16）
+    /// </summary>
+    [ObservableProperty]
+    private double _miniMapOverlayTopRatio = 16.0 / 1080;
+
+    /// <summary>
+    /// 小地图遮罩尺寸比例（相对于窗口高度，1080p下W=H=212）
+    /// </summary>
+    [ObservableProperty]
+    private double _miniMapOverlaySizeRatio = 212.0 / 1080;
 }

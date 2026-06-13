@@ -277,6 +277,59 @@ public class BigMapNikkiLayer
     }
 
     /// <summary>
+    /// 不缩放地进行 SIFT 匹配（适用于小图像，如小地图）
+    /// </summary>
+    /// <param name="greyMat">灰度图像（原始尺寸，不缩小）</param>
+    /// <returns>在地图坐标系中的矩形区域</returns>
+    public Rect GetBigMapRectNoScale(Mat greyMat)
+    {
+        EnsureLoaded();
+
+        if (_allKeyPoints == null || _allDescriptors == null)
+        {
+            return default;
+        }
+
+        try
+        {
+            var sift = Feature2DFactory.Get(Feature2DType.SIFT);
+            var resultRect = sift.KnnMatchRect(_allKeyPoints, _allDescriptors, greyMat);
+            return resultRect;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "不缩放匹配异常");
+            return default;
+        }
+    }
+
+    /// <summary>
+    /// 获取小地图中心点（放宽匹配阈值，上采样后匹配）
+    /// </summary>
+    /// <param name="greyMaskedMat">灰度化并已应用圆形mask的小地图图像</param>
+    /// <returns>小地图中心在世界地图坐标系中的位置</returns>
+    public Point2f GetMiniMapCenter(Mat greyMaskedMat)
+    {
+        EnsureLoaded();
+
+        if (_allKeyPoints == null || _allDescriptors == null)
+        {
+            return default;
+        }
+
+        try
+        {
+            var sift = Feature2DFactory.Get(Feature2DType.SIFT);
+            return sift.KnnMatchCenterRelaxed(_allKeyPoints, _allDescriptors, greyMaskedMat, scaleFactor: 3.0);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "小地图匹配异常");
+            return default;
+        }
+    }
+
+    /// <summary>
     /// 获取大地图位置（带上一帧位置的自适应搜索）
     /// </summary>
     /// <param name="greyBigMapMat">灰度化的大地图截图</param>

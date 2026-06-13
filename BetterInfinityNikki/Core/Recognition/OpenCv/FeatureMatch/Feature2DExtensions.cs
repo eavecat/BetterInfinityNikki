@@ -145,7 +145,16 @@ public static class Feature2DExtensions
         feature2D.DetectAndCompute(queryMat, queryMatMask, out var queryKeyPoints, queryDescriptors);
 #pragma warning restore CS8604 // 引用类型参数可能为 null。
         speedTimer.Record("模板生成KeyPoint");
-        var matches = GetMatcher(matcherType).KnnMatch(queryDescriptors, trainDescriptors, k: 2);
+
+        DMatch[][] matches;
+        try
+        {
+            matches = GetMatcher(matcherType).KnnMatch(queryDescriptors, trainDescriptors, k: 2);
+        }
+        catch (Exception)
+        {
+            matches = GetMatcher(DescriptorMatcherType.BruteForce).KnnMatch(queryDescriptors, trainDescriptors, k: 2);
+        }
         speedTimer.Record("FlannMatch");
 
         // 应用比例测试来过滤匹配点
@@ -230,7 +239,16 @@ public static class Feature2DExtensions
         }
         
         speedTimer.Record("模板生成KeyPoint");
-        var matches = GetMatcher(matcherType).KnnMatch(queryDescriptorsFloat, trainDescriptorsFloat, k: 2);
+
+        DMatch[][] matches;
+        try
+        {
+            matches = GetMatcher(matcherType).KnnMatch(queryDescriptorsFloat, trainDescriptorsFloat, k: 2);
+        }
+        catch (Exception)
+        {
+            matches = GetMatcher(DescriptorMatcherType.BruteForce).KnnMatch(queryDescriptorsFloat, trainDescriptorsFloat, k: 2);
+        }
         speedTimer.Record("FlannMatch");
 
         // 应用比例测试来过滤匹配点
@@ -297,6 +315,92 @@ public static class Feature2DExtensions
         if (rect.Y < 0) rect = new Rect(rect.X, 0, rect.Width, rect.Height + rect.Y);
         
         return rect;
+    }
+
+    /// <summary>
+    /// 针对小图像的 KNN 匹配（放宽阈值，上采样）
+    /// 适用于小地图等小尺寸图像的 SIFT 匹配
+    /// </summary>
+    /// <param name="feature2D">特征检测器</param>
+    /// <param name="trainKeyPoints">训练关键点</param>
+    /// <param name="trainDescriptors">训练描述子</param>
+    /// <param name="queryMat">查询图像（小尺寸）</param>
+    /// <param name="scaleFactor">上采样倍数（默认2）</param>
+    /// <returns>查询图像中心点在训练图像坐标系中的位置，匹配失败返回 default</returns>
+    public static Point2f KnnMatchCenterRelaxed(this Feature2D feature2D, KeyPoint[] trainKeyPoints, Mat trainDescriptors, Mat queryMat, double scaleFactor = 2.0)
+    {
+        using var scaledMat = new Mat();
+        if (scaleFactor > 1.0)
+        {
+            Cv2.Resize(queryMat, scaledMat, new Size(), scaleFactor, scaleFactor, InterpolationFlags.Cubic);
+        }
+        else
+        {
+            queryMat.CopyTo(scaledMat);
+        }
+
+        using var queryDescriptors = new Mat();
+        feature2D.DetectAndCompute(scaledMat, null, out var queryKeyPoints, queryDescriptors);
+
+        if (queryDescriptors.Empty() || queryDescriptors.Rows < 4)
+        {
+            System.Diagnostics.Debug.WriteLine($"[KnnMatchCenterRelaxed] 特征点不足: {queryDescriptors.Rows}");
+            return default;
+        }
+
+        using var queryDescFloat = new Mat();
+        if (queryDescriptors.Type() != MatType.CV_32FC1)
+            queryDescriptors.ConvertTo(queryDescFloat, MatType.CV_32FC1);
+        else
+            queryDescriptors.CopyTo(queryDescFloat);
+
+        using var trainDescFloat = new Mat();
+        if (trainDescriptors.Type() != MatType.CV_32FC1)
+            trainDescriptors.ConvertTo(trainDescFloat, MatType.CV_32FC1);
+        else
+            trainDescriptors.CopyTo(trainDescFloat);
+
+        DMatch[][] matches;
+        try
+        {
+            matches = GetMatcher(DescriptorMatcherType.FlannBased).KnnMatch(queryDescFloat, trainDescFloat, k: 2);
+        }
+        catch (Exception)
+        {
+            matches = GetMatcher(DescriptorMatcherType.BruteForce).KnnMatch(queryDescFloat, trainDescFloat, k: 2);
+        }
+
+        List<DMatch> goodMatches = [];
+        foreach (var match in matches)
+        {
+            if (match.Length == 2 && match[0].Distance < 0.85 * match[1].Distance)
+            {
+                goodMatches.Add(match[0]);
+            }
+        }
+
+        System.Diagnostics.Debug.WriteLine($"[KnnMatchCenterRelaxed] 总匹配: {matches.Length}, 好匹配: {goodMatches.Count}");
+
+        if (goodMatches.Count < 4)
+        {
+            return default;
+        }
+
+        var srcPts = goodMatches.Select(m => queryKeyPoints[m.QueryIdx].Pt).ToArray();
+        var dstPts = goodMatches.Select(m => trainKeyPoints[m.TrainIdx].Pt).ToArray();
+
+        var mask = new Mat();
+        var hMat = Cv2.FindHomography(srcPts.ToList().ToPoint2d(), dstPts.ToList().ToPoint2d(), HomographyMethods.Ransac, 3.0, mask);
+        if (hMat.Empty())
+        {
+            return default;
+        }
+
+        var centerPoint = new Point2f(scaledMat.Cols / 2f, scaledMat.Rows / 2f);
+        Point2f[] centerPoints = [centerPoint];
+        Point2f[] transformedCenter = Cv2.PerspectiveTransform(centerPoints, hMat);
+
+        return transformedCenter[0];
     }
 
     #endregion Knn匹配

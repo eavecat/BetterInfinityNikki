@@ -318,7 +318,7 @@
                 </Grid>
             </ui:CardExpander.Header>
             <StackPanel>
-                <Grid Margin="16">
+                <Grid Margin="16" Visibility="Collapsed">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
@@ -343,7 +343,7 @@
                                      Margin="0,0,8,0"
                                      IsChecked="{Binding Config.MapMaskConfig.MiniMapMaskEnabled, Mode=TwoWay}" />
                 </Grid>
-                <Grid Margin="16">
+                <Grid Margin="16" Visibility="Collapsed">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
@@ -380,6 +380,31 @@
                     <ui:TextBlock Grid.Row="0"
                                   Grid.Column="0"
                                   FontTypography="Body"
+                                  Text="显示已获取点位"
+                                  TextWrapping="Wrap" />
+                    <ui:TextBlock Grid.Row="1"
+                                  Grid.Column="0"
+                                  Foreground="{ui:ThemeResource TextFillColorTertiaryBrush}"
+                                  Text="开启后以半透明方式显示已获取的资源点位"
+                                  TextWrapping="Wrap" />
+                    <ui:ToggleSwitch Grid.Row="0"
+                                     Grid.RowSpan="2"
+                                     Grid.Column="1"
+                                     Margin="0,0,8,0"
+                                     IsChecked="{Binding Config.MapMaskConfig.ShowCollectedPoints, Mode=TwoWay}" />
+                </Grid>
+                <Grid Margin="16">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <ui:TextBlock Grid.Row="0"
+                                  Grid.Column="0"
+                                  FontTypography="Body"
                                   Text="更新点位缓存数据"
                                   TextWrapping="Wrap" />
                     <ui:TextBlock Grid.Row="1"
@@ -395,31 +420,6 @@
                                Icon="{ui:SymbolIcon ArrowSync24}"
                                IsEnabled="{Binding CanUpdateMapPointCache}"
                                Command="{Binding RefreshMapPointCacheCommand}" />
-                </Grid>
-                <Grid Margin="16">
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                    </Grid.RowDefinitions>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="Auto" />
-                    </Grid.ColumnDefinitions>
-                    <ui:TextBlock Grid.Row="0"
-                                  Grid.Column="0"
-                                  FontTypography="Body"
-                                  Text="显示已获取点位"
-                                  TextWrapping="Wrap" />
-                    <ui:TextBlock Grid.Row="1"
-                                  Grid.Column="0"
-                                  Foreground="{ui:ThemeResource TextFillColorTertiaryBrush}"
-                                  Text="开启后以半透明方式显示已获取的资源点位"
-                                  TextWrapping="Wrap" />
-                    <ui:ToggleSwitch Grid.Row="0"
-                                     Grid.RowSpan="2"
-                                     Grid.Column="1"
-                                     Margin="0,0,8,0"
-                                     IsChecked="{Binding Config.MapMaskConfig.ShowCollectedPoints, Mode=TwoWay}" />
                 </Grid>
                 <Grid Margin="16">
                     <Grid.RowDefinitions>
