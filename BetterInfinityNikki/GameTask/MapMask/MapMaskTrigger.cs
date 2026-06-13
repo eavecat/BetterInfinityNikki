@@ -51,6 +51,23 @@ public class MapMaskTrigger : ITaskTrigger
     {
         IsEnabled = _config.Enabled;
 
+        // 启用时预加载地图资源
+        if (IsEnabled)
+        {
+            _ = Task.Run(() =>
+            {
+                try
+                {
+                    _worldMap.WarmUp();
+                    _logger.LogInformation("地图遮罩资源预加载完成");
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "地图遮罩资源预加载失败");
+                }
+            });
+        }
+
         // 关闭时隐藏UI
         if (!IsEnabled)
         {

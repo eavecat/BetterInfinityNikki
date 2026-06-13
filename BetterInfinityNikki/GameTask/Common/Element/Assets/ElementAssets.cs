@@ -88,7 +88,7 @@ public class ElementAssets : BaseAssets<ElementAssets>
             TemplateImageMat = GameTaskManager.LoadAssetImage(@"Common\Element", "return_button.png", systemInfo),
             RegionOfInterest = new Rect(0, 0, CaptureRect.Width / 10, CaptureRect.Height / 10), // 左上角区域
             Threshold = 0.8,
-            DrawOnWindow = true
+            DrawOnWindow = false
         }.InitTemplate();
 
         // 加载筛选按钮模板
@@ -100,7 +100,7 @@ public class ElementAssets : BaseAssets<ElementAssets>
             RegionOfInterest = new Rect(CaptureRect.Width * 3 / 4, CaptureRect.Height * 3 / 4,
                 CaptureRect.Width / 4, CaptureRect.Height / 4), // 右下角区域
             Threshold = 0.8,
-            DrawOnWindow = true
+            DrawOnWindow = false
         }.InitTemplate();
     }
 }

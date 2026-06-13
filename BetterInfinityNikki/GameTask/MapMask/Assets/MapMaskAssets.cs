@@ -24,7 +24,7 @@ public class MapMaskAssets : BaseAssets<MapMaskAssets>
             TemplateImageMat = GameTaskManager.LoadAssetImage("MapMask", "map_title.png", systemInfo),
             RegionOfInterest = new Rect(0, 0, CaptureRect.Width / 10, CaptureRect.Height / 10), // 左上角区域
             Threshold = 0.8,
-            DrawOnWindow = true
+            DrawOnWindow = false
         }.InitTemplate();
     }
 }
