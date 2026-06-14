@@ -32,12 +32,6 @@ public class NikkiWorldMap : SceneBaseMap
     public const int BigMapScaleFactor = 4;
 
     /// <summary>
-    /// 特征提取分块大小（像素）
-    /// 必须与 MapFeatureGenerator 的 blockSize 参数一致
-    /// </summary>
-    public const int FeatureBlockSize = 256;
-
-    /// <summary>
     /// 构造函数
     /// </summary>
     public NikkiWorldMap() : base(
@@ -48,12 +42,10 @@ public class NikkiWorldMap : SceneBaseMap
             (GameMapRows / 2) * MapImageBlockWidth
         ),
         mapImageBlockWidth: MapImageBlockWidth,
-        splitRow: MapImageBlockWidth / FeatureBlockSize * GameMapRows,  // 根据特征分块大小计算
-        splitCol: MapImageBlockWidth / FeatureBlockSize * GameMapCols
+        splitRow: GameMapRows * 2,
+        splitCol: GameMapCols * 2
     )
     {
-        // 提取并保存特征（首次运行时执行）
-        // ExtractAndSaveFeature(Global.Absolute(@"Assets\Map\NikkiWorld\full_map"));
     }
 
     /// <summary>

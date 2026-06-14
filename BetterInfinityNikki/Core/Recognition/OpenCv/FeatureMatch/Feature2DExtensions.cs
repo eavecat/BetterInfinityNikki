@@ -30,7 +30,7 @@ public static class Feature2DExtensions
         feature2D.DetectAndCompute(img, null, out var trainKeyPoints, trainDescriptors);
 
         FeatureStorageHelper.SaveKeyPointArray(trainKeyPoints, trainKeyPointsPath);
-        FeatureStorageHelper.SaveDescriptors(trainDescriptors, trainDescriptorsPath);
+        FeatureStorageHelper.SaveDescMat(trainDescriptors, trainDescriptorsPath);
     }
 
     #endregion

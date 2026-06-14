@@ -1,0 +1,16 @@
+<Window x:Class="BetterInfinityNikki.Test.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Nikki Test" Height="300" Width="400">
+    <StackPanel Margin="10">
+        <TextBlock Text="选择地图:" Margin="0,0,0,5" />
+        <ComboBox x:Name="MapSelector" DisplayMemberPath="Name" Margin="0,0,0,10" />
+
+        <Button Content="1. 下载地图切片" Click="OnDownloadTiles" Margin="0,0,0,5" />
+        <Button Content="2. 合并地图切片" Click="OnMergeTiles" Margin="0,0,0,5" />
+        <Button Content="3. 生成 SIFT 特征数据" Click="OnGenerateFeatures" Margin="0,0,0,5" />
+        <Button Content="4. 复制特征数据到项目" Click="OnCopyFeatures" Margin="0,0,0,10" />
+
+        <TextBlock x:Name="StatusText" TextWrapping="Wrap" />
+    </StackPanel>
+</Window>

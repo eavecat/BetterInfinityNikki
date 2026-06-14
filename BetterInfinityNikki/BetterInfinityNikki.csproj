@@ -24,6 +24,12 @@
 	</ItemGroup>
 
 	<ItemGroup>
+		<None Update="Assets\Map\**">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</None>
+	</ItemGroup>
+
+	<ItemGroup>
 		<!-- UI Framework -->
 		<PackageReference Include="WPF-UI" Version="4.3.0" />
 		<PackageReference Include="WPF-UI.DependencyInjection" Version="4.3.0" />

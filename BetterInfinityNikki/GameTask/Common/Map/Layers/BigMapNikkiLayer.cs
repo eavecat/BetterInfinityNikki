@@ -106,13 +106,13 @@ public class BigMapNikkiLayer
     }
 
     /// <summary>
-    /// 加载地图特征数据
+    /// 加载地图特征数据（从单个合并的特征文件）
     /// </summary>
     private void LoadFeatures()
     {
         try
         {
-            var featuresDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "Map", "NikkiWorld", "Features");
+            var featuresDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "Map", "NikkiWorld");
 
             if (!Directory.Exists(featuresDir))
             {
@@ -122,83 +122,46 @@ public class BigMapNikkiLayer
 
             _logger.LogInformation("开始加载地图特征数据...");
 
-            var allKeyPointsList = new List<KeyPoint>();
-            var allDescriptorsList = new List<Mat>();
-            var totalBlocks = 0;
-            var loadedBlocks = 0;
-
-            // 遍历所有特征块文件
+            // 查找单个合并的特征文件
             var kpFiles = Directory.GetFiles(featuresDir, "*_SIFT.kp.bin");
-            totalBlocks = kpFiles.Length;
-
-            foreach (var kpFile in kpFiles)
+            if (kpFiles.Length == 0)
             {
-                var blockName = Path.GetFileNameWithoutExtension(kpFile).Replace("_SIFT.kp", "");
-                var descFile = Path.Combine(featuresDir, $"{blockName}_SIFT.mat.png");
-
-                if (!File.Exists(descFile))
-                {
-                    _logger.LogWarning("缺少描述子文件: {File}", descFile);
-                    continue;
-                }
-
-                // 加载关键点
-                var keyPoints = FeatureStorageHelper.LoadKeyPointArray(kpFile);
-                if (keyPoints == null || keyPoints.Length == 0)
-                {
-                    continue;
-                }
-
-                // 加载描述子
-                using var descriptors = FeatureStorageHelper.LoadDescriptors(descFile);
-                if (descriptors == null || descriptors.Empty())
-                {
-                    continue;
-                }
-
-                // 解析分块坐标（文件名格式: Teyvat_{row}_{col}）
-                var parts = blockName.Split('_');
-                if (parts.Length >= 3 && int.TryParse(parts[1], out int blockRow) && int.TryParse(parts[2], out int blockCol))
-                {
-                    // 将特征点坐标从分块局部坐标转换为地图全局坐标
-                    // 分块大小 = FeatureBlockSize = 256
-                    float offsetX = blockCol * NikkiWorldMap.FeatureBlockSize;
-                    float offsetY = blockRow * NikkiWorldMap.FeatureBlockSize;
-                    
-                    for (int i = 0; i < keyPoints.Length; i++)
-                    {
-                        var kp = keyPoints[i];
-                        kp.Pt = new Point2f(kp.Pt.X + offsetX, kp.Pt.Y + offsetY);
-                        keyPoints[i] = kp;
-                    }
-                }
-
-                // 记录全局索引偏移
-                int startIndex = allKeyPointsList.Count;
-                for (int i = 0; i < keyPoints.Length; i++)
-                {
-                    keyPoints[i].ClassId = startIndex + i;
-                }
-
-                allKeyPointsList.AddRange(keyPoints);
-                allDescriptorsList.Add(descriptors.Clone());
-                loadedBlocks++;
-            }
-
-            if (allKeyPointsList.Count == 0)
-            {
-                _logger.LogWarning("未加载到任何特征数据");
+                _logger.LogWarning("未找到特征点文件");
                 return;
             }
 
-            // 合并所有描述子
-            _allKeyPoints = allKeyPointsList.ToArray();
-            _allDescriptors = new Mat();
-            Cv2.VConcat(allDescriptorsList.ToArray(), _allDescriptors);
+            // 取第一个（单文件模式下应该只有一个）
+            var kpFilePath = kpFiles[0];
+            var blockName = Path.GetFileNameWithoutExtension(kpFilePath).Replace("_SIFT.kp", "");
+            var descFilePath = Path.Combine(featuresDir, $"{blockName}_SIFT.mat.png");
+
+            if (!File.Exists(descFilePath))
+            {
+                _logger.LogWarning("缺少描述子文件: {File}", descFilePath);
+                return;
+            }
+
+            // 加载关键点
+            var keyPoints = FeatureStorageHelper.LoadKeyPointArray(kpFilePath);
+            if (keyPoints == null || keyPoints.Length == 0)
+            {
+                _logger.LogWarning("特征点文件为空");
+                return;
+            }
+
+            // 加载描述子（灰度 → CV_32FC1）
+            var descriptors = FeatureStorageHelper.LoadDescriptorMat(descFilePath);
+            if (descriptors == null || descriptors.Empty())
+            {
+                _logger.LogWarning("描述子文件为空");
+                return;
+            }
+
+            _allKeyPoints = keyPoints;
+            _allDescriptors = descriptors;
 
             _logger.LogInformation(
-                "特征数据加载完成: {Blocks} 个块, {Points} 个特征点, 描述子尺寸: {Rows}x{Cols}",
-                loadedBlocks,
+                "特征数据加载完成: {Points} 个特征点, 描述子尺寸: {Rows}x{Cols}",
                 _allKeyPoints.Length,
                 _allDescriptors.Rows,
                 _allDescriptors.Cols
@@ -216,12 +179,6 @@ public class BigMapNikkiLayer
                     _allDescriptors
                 );
                 _logger.LogInformation("分块索引构建完成: {Rows}x{Cols}", _worldMap.SplitRow, _worldMap.SplitCol);
-            }
-
-            // 释放临时描述子列表
-            foreach (var desc in allDescriptorsList)
-            {
-                desc.Dispose();
             }
         }
         catch (Exception ex)

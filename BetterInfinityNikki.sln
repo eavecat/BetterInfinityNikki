@@ -11,6 +11,10 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Fischless.HotkeyCapture", "
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Fischless.WindowsInput", "Fischless.WindowsInput\Fischless.WindowsInput.csproj", "{9D00BC7A-9280-4AC9-8951-4502EDB71B76}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Test", "Test", "{F262289B-FD08-41E7-9B7D-480C28F970EC}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BetterInfinityNikki.Test", "Test\BetterInfinityNikki.Test\BetterInfinityNikki.Test.csproj", "{5C9F4248-5592-4372-8BBC-636F4B23DD25}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -45,11 +49,22 @@ Global
 		{9D00BC7A-9280-4AC9-8951-4502EDB71B76}.Release|x64.Build.0 = Release|x64
 		{00000000-0000-0000-0000-000000000000}.Debug|Any CPU.ActiveCfg = Debug|x64
 		{00000000-0000-0000-0000-000000000000}.Debug|Any CPU.Build.0 = Debug|x64
+		{5C9F4248-5592-4372-8BBC-636F4B23DD25}.Debug|Any CPU.ActiveCfg = Debug|x64
+		{5C9F4248-5592-4372-8BBC-636F4B23DD25}.Debug|Any CPU.Build.0 = Debug|x64
+		{5C9F4248-5592-4372-8BBC-636F4B23DD25}.Debug|x64.ActiveCfg = Debug|x64
+		{5C9F4248-5592-4372-8BBC-636F4B23DD25}.Debug|x64.Build.0 = Debug|x64
+		{5C9F4248-5592-4372-8BBC-636F4B23DD25}.Release|Any CPU.ActiveCfg = Release|x64
+		{5C9F4248-5592-4372-8BBC-636F4B23DD25}.Release|Any CPU.Build.0 = Release|x64
+		{5C9F4248-5592-4372-8BBC-636F4B23DD25}.Release|x64.ActiveCfg = Release|x64
+		{5C9F4248-5592-4372-8BBC-636F4B23DD25}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {B2C3D4E5-F6G7-48H9-I0J1-K2L3M4N5O6P7}
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{5C9F4248-5592-4372-8BBC-636F4B23DD25} = {F262289B-FD08-41E7-9B7D-480C28F970EC}
 	EndGlobalSection
 EndGlobal
