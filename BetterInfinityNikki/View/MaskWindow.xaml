@@ -343,6 +343,7 @@
                                         <Grid Grid.Row="0" Margin="12,12,12,8">
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="12" />
                                                 <ColumnDefinition Width="*" />
                                                 <ColumnDefinition Width="Auto" />
                                             </Grid.ColumnDefinitions>
@@ -354,15 +355,14 @@
                                                       DisplayMemberPath="MapName"
                                                       SelectedItem="{Binding SelectedWorldConfig, Mode=TwoWay}"
                                                       ItemsSource="{Binding WorldConfigList}"
-                                                      VerticalContentAlignment="Center"
-                                                      Margin="0,0,8,0">
+                                                      VerticalContentAlignment="Center">
                                                 <ComboBox.ToolTip>
                                                     <ToolTip Content="切换地图特征数据" />
                                                 </ComboBox.ToolTip>
                                             </ComboBox>
 
                                             <ui:TextBox x:Name="MapLabelSearchTextBox"
-                                                        Grid.Column="1"
+                                                        Grid.Column="2"
                                                         Height="36"
                                                         PlaceholderText="搜索点位分类"
                                                         Text="{Binding MapLabelSearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}">
@@ -503,11 +503,14 @@
                                                     <Grid Grid.Row="1"
                                                           Visibility="{Binding IsMapLabelTreeLoading, Converter={StaticResource BooleanToVisibilityConverter}}"
                                                           Background="#AA232831">
-                                                        <ui:TextBlock HorizontalAlignment="Center"
-                                                                      VerticalAlignment="Center"
-                                                                      Foreground="White"
-                                                                      FontTypography="BodyStrong"
-                                                                      Text="加载中..." />
+                                                        <StackPanel HorizontalAlignment="Center"
+                                                                    VerticalAlignment="Center">
+                                                            <ui:ProgressRing Width="24" Height="24" IsIndeterminate="True" Margin="0,0,0,8" />
+                                                            <ui:TextBlock HorizontalAlignment="Center"
+                                                                          Foreground="White"
+                                                                          FontTypography="BodyStrong"
+                                                                          Text="{Binding LoadingStatus}" />
+                                                        </StackPanel>
                                                     </Grid>
                                                 </Grid>
                                             </Border>

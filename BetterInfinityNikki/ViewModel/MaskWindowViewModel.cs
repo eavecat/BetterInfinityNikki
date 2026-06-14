@@ -138,6 +138,12 @@ public partial class MaskWindowViewModel : ObservableObject
     private bool _isLoadingPoints;
 
     /// <summary>
+    /// 加载状态文本
+    /// </summary>
+    [ObservableProperty]
+    private string _loadingStatus = string.Empty;
+
+    /// <summary>
     /// 世界配置列表（地图选择下拉框数据源）
     /// </summary>
     [ObservableProperty]
@@ -148,6 +154,11 @@ public partial class MaskWindowViewModel : ObservableObject
     /// </summary>
     [ObservableProperty]
     private WorldConfigItem? _selectedWorldConfig;
+
+    /// <summary>
+    /// 当前世界ID
+    /// </summary>
+    private string CurrentWorldId => SelectedWorldConfig?.Id.ToString() ?? "1";
 
     /// <summary>
     /// 是否正在加载世界配置
@@ -301,12 +312,16 @@ public partial class MaskWindowViewModel : ObservableObject
         _logger.LogInformation("切换地图: {MapName} (ID={Id}, WorldType={WorldType})",
             value.MapName, value.Id, value.WorldType);
 
+        // 切换世界，清除点位缓存
+        _mapPointService?.SwitchWorld(CurrentWorldId);
+
         // 清除当前选中的标签和点位
         SelectedMapLabelItems.Clear();
         MapLabelItems.Clear();
         MapLabelCategories.Clear();
+        SelectedCategory = null;
 
-        // 重新加载分类树
+        // 重新加载分类树（fire-and-forget，内部有loading状态）
         _ = LoadLabelCategoriesAsync();
     }
 
@@ -370,9 +385,10 @@ public partial class MaskWindowViewModel : ObservableObject
         try
         {
             IsMapLabelTreeLoading = true;
-            
-            var categories = await _mapPointService.GetLabelCategoriesAsync(ct);
-            
+            LoadingStatus = "正在加载点位分类...";
+
+            var categories = await _mapPointService.GetLabelCategoriesAsync(CurrentWorldId, ct);
+
             if (ct.IsCancellationRequested)
             {
                 return;
@@ -385,8 +401,15 @@ public partial class MaskWindowViewModel : ObservableObject
                 {
                     MapLabelCategories.Add(category);
                 }
+
+                // 默认选中第一个分类
+                if (MapLabelCategories.Count > 0)
+                {
+                    SelectedCategory = MapLabelCategories[0];
+                }
             });
 
+            LoadingStatus = $"加载完成，共 {categories.Count} 个分类";
             _logger.LogDebug("成功加载 {Count} 个点位分类", categories.Count);
         }
         catch (OperationCanceledException)
@@ -396,6 +419,7 @@ public partial class MaskWindowViewModel : ObservableObject
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "加载点位分类失败");
+            LoadingStatus = "加载失败";
         }
         finally
         {
@@ -530,7 +554,7 @@ public partial class MaskWindowViewModel : ObservableObject
             IsLoadingPoints = true;
 
             var selectedLabels = SelectedMapLabelItems.ToList();
-            var result = await _mapPointService.GetPointsAsync(selectedLabels, ct);
+            var result = await _mapPointService.GetPointsAsync(CurrentWorldId, selectedLabels, ct);
 
             if (ct.IsCancellationRequested)
             {

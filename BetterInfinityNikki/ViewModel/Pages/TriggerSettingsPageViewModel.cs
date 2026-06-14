@@ -71,7 +71,7 @@ public partial class TriggerSettingsPageViewModel : ViewModel
         IsUpdatingMapPointCache = true;
         try
         {
-            await _mapPointService.UpdateCacheAsync();
+            await _mapPointService.UpdateCacheAsync("1");
             await ThemedMessageBox.SuccessAsync("点位缓存数据已更新完成");
         }
         catch (Exception ex)

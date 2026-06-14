@@ -11,13 +11,12 @@ namespace BetterInfinityNikki.Service;
 public sealed class MaskMapPointService : IMaskMapPointService
 {
     private static readonly string CacheDir = Global.Absolute(Path.Combine("User", "Cache", "MaskMapData"));
-    private static readonly string CatalogCachePath = Path.Combine(CacheDir, "catalog_list.json");
-    private static readonly string SpawnerCachePath = Path.Combine(CacheDir, "spawner_list.json");
     private static readonly string CollectedCachePath = Path.Combine(CacheDir, "user_collected.json");
 
     private readonly ILogger<MaskMapPointService> _logger;
     private readonly NikkiMapApiService _apiService;
 
+    private string? _currentWorldId;
     private List<Spawner>? _allSpawners;
     private readonly SemaphoreSlim _loadLock = new(1, 1);
 
@@ -32,21 +31,28 @@ public sealed class MaskMapPointService : IMaskMapPointService
         _apiService = apiService;
     }
 
-    public async Task<IReadOnlyList<MaskMapPointLabel>> GetLabelCategoriesAsync(CancellationToken ct = default)
+    private static string GetCatalogCachePath(string worldId) =>
+        Path.Combine(CacheDir, $"catalog_list_{worldId}.json");
+
+    private static string GetSpawnerCachePath(string worldId) =>
+        Path.Combine(CacheDir, $"spawner_list_{worldId}.json");
+
+    public async Task<IReadOnlyList<MaskMapPointLabel>> GetLabelCategoriesAsync(string worldId, CancellationToken ct = default)
     {
         try
         {
-            _logger.LogDebug("开始获取点位分类树");
+            _logger.LogDebug("开始获取点位分类树, worldId={WorldId}", worldId);
 
+            var cachePath = GetCatalogCachePath(worldId);
             CatalogListData? catalogListData = null;
 
-            if (File.Exists(CatalogCachePath))
+            if (File.Exists(cachePath))
             {
                 try
                 {
-                    var cachedJson = await File.ReadAllTextAsync(CatalogCachePath, ct);
+                    var cachedJson = await File.ReadAllTextAsync(cachePath, ct);
                     catalogListData = JsonSerializer.Deserialize<CatalogListData>(cachedJson);
-                    _logger.LogDebug("从文件缓存加载点位分类");
+                    _logger.LogDebug("从文件缓存加载点位分类, worldId={WorldId}", worldId);
                 }
                 catch (Exception ex)
                 {
@@ -57,7 +63,7 @@ public sealed class MaskMapPointService : IMaskMapPointService
 
             if (catalogListData == null)
             {
-                var response = await _apiService.GetCatalogListAsync(ct: ct);
+                var response = await _apiService.GetCatalogListAsync(worldId, ct);
                 catalogListData = response?.Data;
 
                 if (catalogListData != null)
@@ -66,8 +72,8 @@ public sealed class MaskMapPointService : IMaskMapPointService
                     {
                         Directory.CreateDirectory(CacheDir);
                         var json = JsonSerializer.Serialize(catalogListData);
-                        await File.WriteAllTextAsync(CatalogCachePath, json, ct);
-                        _logger.LogDebug("点位分类数据已保存到缓存文件");
+                        await File.WriteAllTextAsync(cachePath, json, ct);
+                        _logger.LogDebug("点位分类数据已保存到缓存文件, worldId={WorldId}", worldId);
                     }
                     catch (Exception ex)
                     {
@@ -78,7 +84,7 @@ public sealed class MaskMapPointService : IMaskMapPointService
 
             if (catalogListData?.List == null || catalogListData.List.Count == 0)
             {
-                _logger.LogWarning("未获取到任何点位分类");
+                _logger.LogWarning("未获取到任何点位分类, worldId={WorldId}", worldId);
                 return Array.Empty<MaskMapPointLabel>();
             }
 
@@ -111,7 +117,7 @@ public sealed class MaskMapPointService : IMaskMapPointService
                 });
             }
 
-            _logger.LogDebug("成功获取 {Count} 个点位分类", categories.Count);
+            _logger.LogDebug("成功获取 {Count} 个点位分类, worldId={WorldId}", categories.Count, worldId);
             return categories;
         }
         catch (OperationCanceledException)
@@ -125,7 +131,7 @@ public sealed class MaskMapPointService : IMaskMapPointService
         }
     }
 
-    public async Task<MaskMapPointsResult> GetPointsAsync(IReadOnlyList<MaskMapPointLabel> selectedItems, CancellationToken ct = default)
+    public async Task<MaskMapPointsResult> GetPointsAsync(string worldId, IReadOnlyList<MaskMapPointLabel> selectedItems, CancellationToken ct = default)
     {
         try
         {
@@ -134,7 +140,7 @@ public sealed class MaskMapPointService : IMaskMapPointService
                 return new MaskMapPointsResult();
             }
 
-            await EnsureAllPointsLoadedAsync(ct);
+            await EnsureAllPointsLoadedAsync(worldId, ct);
             await EnsureCollectedDataLoadedAsync(ct);
 
             var selectedIds = new HashSet<int>();
@@ -175,7 +181,7 @@ public sealed class MaskMapPointService : IMaskMapPointService
                 });
             }
 
-            _logger.LogDebug("从缓存中筛选出 {Count} 个点位", points.Count);
+            _logger.LogDebug("从缓存中筛选出 {Count} 个点位, worldId={WorldId}", points.Count, worldId);
 
             return new MaskMapPointsResult
             {
@@ -252,15 +258,24 @@ public sealed class MaskMapPointService : IMaskMapPointService
         }
     }
 
-    private async Task EnsureAllPointsLoadedAsync(CancellationToken ct)
+    public void SwitchWorld(string worldId)
     {
-        if (_allSpawners != null) return;
+        if (_currentWorldId == worldId) return;
+
+        _logger.LogInformation("切换世界: {OldWorldId} -> {NewWorldId}", _currentWorldId, worldId);
+        _currentWorldId = worldId;
+        _allSpawners = null;
+    }
+
+    private async Task EnsureAllPointsLoadedAsync(string worldId, CancellationToken ct)
+    {
+        if (_allSpawners != null && _currentWorldId == worldId) return;
 
         await _loadLock.WaitAsync(ct);
         try
         {
-            if (_allSpawners != null) return;
-            await LoadSpawnersCoreAsync(ct);
+            if (_allSpawners != null && _currentWorldId == worldId) return;
+            await LoadSpawnersCoreAsync(worldId, ct);
         }
         finally
         {
@@ -268,18 +283,21 @@ public sealed class MaskMapPointService : IMaskMapPointService
         }
     }
 
-    private async Task LoadSpawnersCoreAsync(CancellationToken ct)
+    private async Task LoadSpawnersCoreAsync(string worldId, CancellationToken ct)
     {
-        _logger.LogDebug("开始预加载所有点位数据");
+        _logger.LogDebug("开始预加载所有点位数据, worldId={WorldId}", worldId);
 
-        if (File.Exists(SpawnerCachePath))
+        var cachePath = GetSpawnerCachePath(worldId);
+
+        if (File.Exists(cachePath))
         {
             try
             {
-                var cachedJson = await File.ReadAllTextAsync(SpawnerCachePath, ct);
+                var cachedJson = await File.ReadAllTextAsync(cachePath, ct);
                 var cachedData = JsonSerializer.Deserialize<SpawnerListData>(cachedJson);
                 _allSpawners = cachedData?.List ?? new List<Spawner>();
-                _logger.LogInformation("从文件缓存加载点位数据，共 {Count} 个点位", _allSpawners.Count);
+                _currentWorldId = worldId;
+                _logger.LogInformation("从文件缓存加载点位数据，共 {Count} 个点位, worldId={WorldId}", _allSpawners.Count, worldId);
                 return;
             }
             catch (Exception ex)
@@ -288,43 +306,47 @@ public sealed class MaskMapPointService : IMaskMapPointService
             }
         }
 
-        var spawnerResponse = await _apiService.GetSpawnerListAsync(Array.Empty<int>(), ct: ct);
+        var spawnerResponse = await _apiService.GetSpawnerListAsync(Array.Empty<int>(), worldId, ct);
         _allSpawners = spawnerResponse?.Data?.List ?? new List<Spawner>();
+        _currentWorldId = worldId;
 
         try
         {
             Directory.CreateDirectory(CacheDir);
             var dataToCache = new SpawnerListData { List = _allSpawners };
             var json = JsonSerializer.Serialize(dataToCache);
-            await File.WriteAllTextAsync(SpawnerCachePath, json, ct);
-            _logger.LogDebug("点位数据已保存到缓存文件");
+            await File.WriteAllTextAsync(cachePath, json, ct);
+            _logger.LogDebug("点位数据已保存到缓存文件, worldId={WorldId}", worldId);
         }
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "保存点位缓存文件失败");
         }
 
-        _logger.LogInformation("预加载完成，共 {Count} 个点位", _allSpawners.Count);
+        _logger.LogInformation("预加载完成，共 {Count} 个点位, worldId={WorldId}", _allSpawners.Count, worldId);
     }
 
-    public async Task UpdateCacheAsync(CancellationToken ct = default)
+    public async Task UpdateCacheAsync(string worldId, CancellationToken ct = default)
     {
         await _loadLock.WaitAsync(ct);
         try
         {
             _allSpawners = null;
 
-            if (File.Exists(CatalogCachePath))
-                File.Delete(CatalogCachePath);
-            if (File.Exists(SpawnerCachePath))
-                File.Delete(SpawnerCachePath);
+            var catalogCache = GetCatalogCachePath(worldId);
+            var spawnerCache = GetSpawnerCachePath(worldId);
 
-            _logger.LogInformation("已清除点位缓存文件，开始重新获取数据");
+            if (File.Exists(catalogCache))
+                File.Delete(catalogCache);
+            if (File.Exists(spawnerCache))
+                File.Delete(spawnerCache);
 
-            await GetLabelCategoriesAsync(ct);
-            await LoadSpawnersCoreAsync(ct);
+            _logger.LogInformation("已清除点位缓存文件，开始重新获取数据, worldId={WorldId}", worldId);
 
-            _logger.LogInformation("点位缓存数据更新完成");
+            await GetLabelCategoriesAsync(worldId, ct);
+            await LoadSpawnersCoreAsync(worldId, ct);
+
+            _logger.LogInformation("点位缓存数据更新完成, worldId={WorldId}", worldId);
         }
         finally
         {

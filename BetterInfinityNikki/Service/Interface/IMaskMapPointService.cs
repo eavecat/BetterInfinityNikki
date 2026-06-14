@@ -13,12 +13,12 @@ public interface IMaskMapPointService
     /// <summary>
     /// 获取点位分类树
     /// </summary>
-    Task<IReadOnlyList<MaskMapPointLabel>> GetLabelCategoriesAsync(CancellationToken ct = default);
+    Task<IReadOnlyList<MaskMapPointLabel>> GetLabelCategoriesAsync(string worldId, CancellationToken ct = default);
 
     /// <summary>
     /// 根据选中的分类获取点位列表
     /// </summary>
-    Task<MaskMapPointsResult> GetPointsAsync(IReadOnlyList<MaskMapPointLabel> selectedItems, CancellationToken ct = default);
+    Task<MaskMapPointsResult> GetPointsAsync(string worldId, IReadOnlyList<MaskMapPointLabel> selectedItems, CancellationToken ct = default);
 
     /// <summary>
     /// 获取单个点位的详细信息
@@ -26,9 +26,14 @@ public interface IMaskMapPointService
     Task<MaskMapPointInfo> GetPointInfoAsync(MaskMapPoint point, CancellationToken ct = default);
 
     /// <summary>
+    /// 切换世界，清除当前加载的点位数据
+    /// </summary>
+    void SwitchWorld(string worldId);
+
+    /// <summary>
     /// 清除缓存文件并重新从API获取数据
     /// </summary>
-    Task UpdateCacheAsync(CancellationToken ct = default);
+    Task UpdateCacheAsync(string worldId, CancellationToken ct = default);
 
     /// <summary>
     /// 从API获取用户收集进度数据并缓存到本地
