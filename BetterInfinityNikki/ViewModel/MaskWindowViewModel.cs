@@ -1,8 +1,12 @@
 using BetterInfinityNikki.Core.Config;
 using BetterInfinityNikki.Model;
 using BetterInfinityNikki.Model.MaskMap;
+using BetterInfinityNikki.Service;
 using BetterInfinityNikki.Service.Interface;
+using BetterInfinityNikki.Service.Model.NikkiMap.Responses;
 using System.Collections.ObjectModel;
+using System.IO;
+using System.Text.Json;
 using System.Threading;
 using System.Windows;
 using Wpf.Ui.Controls;
@@ -133,6 +137,31 @@ public partial class MaskWindowViewModel : ObservableObject
     [ObservableProperty]
     private bool _isLoadingPoints;
 
+    /// <summary>
+    /// 世界配置列表（地图选择下拉框数据源）
+    /// </summary>
+    [ObservableProperty]
+    private ObservableCollection<WorldConfigItem> _worldConfigList = new();
+
+    /// <summary>
+    /// 当前选中的世界配置
+    /// </summary>
+    [ObservableProperty]
+    private WorldConfigItem? _selectedWorldConfig;
+
+    /// <summary>
+    /// 是否正在加载世界配置
+    /// </summary>
+    [ObservableProperty]
+    private bool _isLoadingWorldConfig;
+
+    /// <summary>
+    /// 世界配置缓存路径
+    /// </summary>
+    private static readonly string WorldConfigCachePath = Path.Combine(
+        Global.Absolute(Path.Combine("User", "Cache", "MaskMapData")),
+        "world_config_list.json");
+
     private readonly IMaskMapPointService? _mapPointService;
     private CancellationTokenSource? _loadCategoriesCts;
     private CancellationTokenSource? _loadPointsCts;
@@ -178,14 +207,120 @@ public partial class MaskWindowViewModel : ObservableObject
         }
     }
 
+    /// <summary>
+    /// 加载世界配置列表
+    /// </summary>
     [RelayCommand]
-    private void OnLoaded()
+    private async Task LoadWorldConfigListAsync()
+    {
+        if (IsLoadingWorldConfig) return;
+        IsLoadingWorldConfig = true;
+
+        try
+        {
+            WorldConfigListData? configData = null;
+
+            // 尝试从缓存加载
+            if (File.Exists(WorldConfigCachePath))
+            {
+                try
+                {
+                    var cachedJson = await File.ReadAllTextAsync(WorldConfigCachePath);
+                    configData = JsonSerializer.Deserialize<WorldConfigListData>(cachedJson);
+                    _logger.LogDebug("从缓存加载世界配置列表");
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "读取世界配置缓存失败，将从API重新获取");
+                }
+            }
+
+            // 缓存不存在或加载失败，从API获取
+            if (configData?.List == null || configData.List.Count == 0)
+            {
+                var apiService = App.GetService<NikkiMapApiService>();
+                if (apiService != null)
+                {
+                    var response = await apiService.GetWorldConfigListAsync();
+                    configData = response.Data;
+
+                    // 保存到缓存
+                    if (configData?.List != null && configData.List.Count > 0)
+                    {
+                        try
+                        {
+                            Directory.CreateDirectory(Path.GetDirectoryName(WorldConfigCachePath)!);
+                            var json = JsonSerializer.Serialize(configData);
+                            await File.WriteAllTextAsync(WorldConfigCachePath, json);
+                            _logger.LogDebug("世界配置列表已缓存");
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogWarning(ex, "保存世界配置缓存失败");
+                        }
+                    }
+                }
+            }
+
+            if (configData?.List != null)
+            {
+                Application.Current.Dispatcher.Invoke(() =>
+                {
+                    WorldConfigList.Clear();
+                    foreach (var item in configData.List)
+                    {
+                        item.MapName = NikkiMapApiService.ParseMultiLangText(item.MapName, "zh-cn");
+                        WorldConfigList.Add(item);
+                    }
+
+                    // 默认选中第一个
+                    if (WorldConfigList.Count > 0)
+                    {
+                        SelectedWorldConfig = WorldConfigList[0];
+                    }
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "加载世界配置列表失败");
+        }
+        finally
+        {
+            IsLoadingWorldConfig = false;
+        }
+    }
+
+    /// <summary>
+    /// 选中世界配置变化时，重新加载点位数据
+    /// </summary>
+    partial void OnSelectedWorldConfigChanged(WorldConfigItem? value)
+    {
+        if (value == null) return;
+
+        _logger.LogInformation("切换地图: {MapName} (ID={Id}, WorldType={WorldType})",
+            value.MapName, value.Id, value.WorldType);
+
+        // 清除当前选中的标签和点位
+        SelectedMapLabelItems.Clear();
+        MapLabelItems.Clear();
+        MapLabelCategories.Clear();
+
+        // 重新加载分类树
+        _ = LoadLabelCategoriesAsync();
+    }
+
+    [RelayCommand]
+    private async Task OnLoaded()
     {
         RefreshSettings();
         InitializeStatusList();
+        await LoadWorldConfigListAsync();
         
         // 延迟更新布局位置，等待窗口尺寸确定
+#pragma warning disable CS4014
         Application.Current.Dispatcher.BeginInvoke(() =>
+#pragma warning restore CS4014
         {
             if (MaskWindowWidth > 0 && MaskWindowHeight > 0)
             {

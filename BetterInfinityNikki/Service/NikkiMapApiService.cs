@@ -229,6 +229,43 @@ public sealed class NikkiMapApiService : IDisposable
     }
 
     /// <summary>
+    /// 获取世界配置列表
+    /// </summary>
+    public async Task<WorldConfigListResponse> GetWorldConfigListAsync(CancellationToken ct = default)
+    {
+        var request = new WorldConfigListRequest
+        {
+            ClientId = ClientId,
+            Token = GetToken(),
+            OpenId = OpenId
+        };
+
+        try
+        {
+            var json = JsonSerializer.Serialize(request);
+            var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+            using var response = await _httpClient.PostAsync($"{BaseUrl}/world/config/list", content, ct);
+            response.EnsureSuccessStatusCode();
+
+            var responseJson = await response.Content.ReadAsStringAsync(ct);
+            var result = JsonSerializer.Deserialize<NikkiMapApiResponse<WorldConfigListData>>(responseJson);
+
+            if (result?.Code != 0 || result.Data == null)
+            {
+                throw new Exception($"API返回错误: Code={result?.Code}, Message={result?.Message}");
+            }
+
+            return new WorldConfigListResponse { Data = result.Data };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "获取世界配置列表失败");
+            throw;
+        }
+    }
+
+    /// <summary>
     /// 获取用户资源收集进度
     /// </summary>
     public async Task<UserCollectedResponse> GetUserCollectedInfoAsync(CancellationToken ct = default)

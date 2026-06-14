@@ -343,14 +343,27 @@
                                         <Grid Grid.Row="0" Margin="12,12,12,8">
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="Auto" />
-                                                <ColumnDefinition Width="Auto" />
                                                 <ColumnDefinition Width="*" />
                                                 <ColumnDefinition Width="Auto" />
                                             </Grid.ColumnDefinitions>
 
+                                            <ComboBox x:Name="WorldConfigComboBox"
+                                                      Grid.Column="0"
+                                                      Width="140"
+                                                      Height="36"
+                                                      DisplayMemberPath="MapName"
+                                                      SelectedItem="{Binding SelectedWorldConfig, Mode=TwoWay}"
+                                                      ItemsSource="{Binding WorldConfigList}"
+                                                      VerticalContentAlignment="Center"
+                                                      Margin="0,0,8,0">
+                                                <ComboBox.ToolTip>
+                                                    <ToolTip Content="切换地图特征数据" />
+                                                </ComboBox.ToolTip>
+                                            </ComboBox>
+
                                             <ui:TextBox x:Name="MapLabelSearchTextBox"
-                                                        Grid.Column="2"
-                                                        Height="32"
+                                                        Grid.Column="1"
+                                                        Height="36"
                                                         PlaceholderText="搜索点位分类"
                                                         Text="{Binding MapLabelSearchText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}">
                                                 <b:Interaction.Triggers>
