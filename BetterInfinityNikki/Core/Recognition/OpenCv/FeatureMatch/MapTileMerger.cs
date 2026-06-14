@@ -16,6 +16,7 @@ public static class MapTileMerger
         int startY = 0,
         int endX = 63,
         int endY = 63,
+        int level = 6,
         Action<string>? log = null)
     {
         void Log(string msg) { log?.Invoke(msg); Console.WriteLine(msg); }
@@ -37,7 +38,7 @@ public static class MapTileMerger
             throw new Exception("起始行列必须小于结束行列");
         }
 
-        var firstTilePath = Path.Combine(tilesDirectory, $"6-{startX}-{startY}.webp");
+        var firstTilePath = Path.Combine(tilesDirectory, $"{level}-{startX}-{startY}.webp");
         using var firstTile = Cv2.ImRead(firstTilePath, ImreadModes.Color);
         if (firstTile.Empty())
         {
@@ -66,7 +67,7 @@ public static class MapTileMerger
                 int mapCol = x - startX;
                 int mapRow = y - startY;
 
-                var tileFileName = $"6-{x}-{y}";
+                var tileFileName = $"{level}-{x}-{y}";
                 if (!tileFiles.Contains(tileFileName))
                 {
                     failCount++;

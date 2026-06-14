@@ -24,7 +24,7 @@ public static class MapTileDownloader
         {
             for (int y = map.StartY; y <= map.EndY; y++)
             {
-                var filename = $"6-{x}-{y}.webp";
+                var filename = $"{map.Level}-{x}-{y}.webp";
                 var url = $"{baseUrl}/{filename}?x-oss-process=image/format,webp";
                 tasks.Add((x, y, filename, url));
             }

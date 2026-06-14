@@ -67,6 +67,7 @@ public partial class MainWindow : Window
                     startY: map.StartY,
                     endX: map.EndX,
                     endY: map.EndY,
+                    level: map.Level,
                     log: msg => Dispatcher.Invoke(() => StatusText.Text = msg)
                 );
 
