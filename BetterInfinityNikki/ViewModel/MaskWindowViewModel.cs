@@ -173,6 +173,12 @@ public partial class MaskWindowViewModel : ObservableObject
         Global.Absolute(Path.Combine("User", "Cache", "MaskMapData")),
         "world_config_list.json");
 
+    /// <summary>
+    /// 地图遮罩功能是否启用（MapMaskConfig.Enabled）
+    /// 未启用时应跳过世界配置/点位/特征等重型初始化
+    /// </summary>
+    private bool IsMapMaskFeatureEnabled => Config?.MapMaskConfig.Enabled == true;
+
     private readonly IMaskMapPointService? _mapPointService;
     private CancellationTokenSource? _loadCategoriesCts;
     private CancellationTokenSource? _loadPointsCts;
@@ -225,6 +231,11 @@ public partial class MaskWindowViewModel : ObservableObject
     private async Task LoadWorldConfigListAsync()
     {
         if (IsLoadingWorldConfig) return;
+        if (!IsMapMaskFeatureEnabled)
+        {
+            _logger.LogDebug("地图遮罩功能未启用，跳过加载世界配置列表");
+            return;
+        }
         IsLoadingWorldConfig = true;
 
         try
@@ -322,6 +333,7 @@ public partial class MaskWindowViewModel : ObservableObject
     partial void OnSelectedWorldConfigChanged(WorldConfigItem? value)
     {
         if (value == null) return;
+        if (!IsMapMaskFeatureEnabled) return;
 
         _logger.LogInformation("切换地图: {MapName} (ID={Id}, WorldType={WorldType})",
             value.MapName, value.Id, value.WorldType);
@@ -334,7 +346,7 @@ public partial class MaskWindowViewModel : ObservableObject
         {
             var featureConfig = MapFeatureRegistry.GetByKey(value.FeatureDir);
             var layer = GameTask.Common.Map.Layers.BigMapNikkiLayer.GetInstance(
-                App.GetService<GameTask.Common.Map.Maps.NikkiWorldMap>()!);
+                new GameTask.Common.Map.Maps.NikkiWorldMap());
             layer.SwitchMap(value.FeatureDir, featureConfig);
         }
 
@@ -375,7 +387,7 @@ public partial class MaskWindowViewModel : ObservableObject
     [RelayCommand]
     private async Task ToggleMapPointPickerAsync()
     {
-        if (!IsInBigMapUi)
+        if (!IsInBigMapUi || !IsMapMaskFeatureEnabled)
         {
             IsMapPointPickerOpen = false;
             return;
@@ -397,6 +409,11 @@ public partial class MaskWindowViewModel : ObservableObject
         if (_mapPointService == null)
         {
             _logger.LogWarning("IMaskMapPointService 未初始化");
+            return;
+        }
+
+        if (!IsMapMaskFeatureEnabled)
+        {
             return;
         }
 
@@ -562,7 +579,7 @@ public partial class MaskWindowViewModel : ObservableObject
     /// </summary>
     private async Task RefreshSelectedMapPointsAsync()
     {
-        if (_mapPointService == null || SelectedMapLabelItems.Count == 0)
+        if (_mapPointService == null || SelectedMapLabelItems.Count == 0 || !IsMapMaskFeatureEnabled)
         {
             MapPoints = new ObservableCollection<MaskMapPoint>();
             return;
@@ -683,7 +700,7 @@ public partial class MaskWindowViewModel : ObservableObject
     private async Task OnPointClick(MaskMapPointClickArgs? args)
     {
         var point = args?.Point;
-        if (point == null || !IsInBigMapUi) return;
+        if (point == null || !IsInBigMapUi || !IsMapMaskFeatureEnabled) return;
 
         var title = ResolvePointTitle(point);
         await PointInfoPopup.ShowAsync(point, args!.AnchorPosition, title);
