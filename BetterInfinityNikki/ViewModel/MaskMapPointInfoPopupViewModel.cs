@@ -58,6 +58,7 @@ public partial class MaskMapPointInfoPopupViewModel : ObservableObject
         ImageError = string.Empty;
         IsImageLoading = false;
         IsLoading = true;
+
         IsOpen = true;
 
         try

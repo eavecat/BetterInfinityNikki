@@ -35,6 +35,11 @@ public class MapMaskTrigger : ITaskTrigger
     private DateTime _prevExecute = DateTime.MinValue;
     private OpenCvSharp.Rect _prevRect = default;
 
+    /// <summary>
+    /// 当前 SIFT 检测到的大地图视口（特征图像素坐标），用于弹框计算屏幕位置
+    /// </summary>
+    public OpenCvSharp.Rect CurrentViewport => _prevRect;
+
     public MapMaskTrigger()
     {
         _logger = App.GetLogger<MapMaskTrigger>();

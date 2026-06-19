@@ -37,18 +37,23 @@ public abstract class SceneBaseMap : ISceneMap
     /// 特征点拆分行数（用于分块索引优化）
     /// 0 表示不分块
     /// </summary>
-    public readonly int SplitRow;
+    public int SplitRow { get; set; }
 
     /// <summary>
     /// 特征点拆分列数（用于分块索引优化）
     /// 0 表示不分块
     /// </summary>
-    public readonly int SplitCol;
+    public int SplitCol { get; set; }
 
     /// <summary>
     /// 特征地图图像的块大小 / 1024 的值，用于坐标系转换
     /// </summary>
-    private readonly float _mapImageBlockWidthScale;
+    private float _mapImageBlockWidthScale;
+
+    protected void UpdateBlockWidthScale()
+    {
+        _mapImageBlockWidthScale = MapImageBlockWidth / 1024f;
+    }
 
     /// <summary>
     /// SIFT 特征匹配器

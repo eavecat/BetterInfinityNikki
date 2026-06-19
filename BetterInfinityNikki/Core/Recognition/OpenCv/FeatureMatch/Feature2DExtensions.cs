@@ -292,6 +292,15 @@ public static class Feature2DExtensions
         var sceneCorners = Cv2.PerspectiveTransform(objCorners, hMat);
         speedTimer.Record("PerspectiveTransform");
         speedTimer.DebugPrint();
+
+        var dbgRect = Cv2.BoundingRect(sceneCorners);
+        Serilog.Log.Information(
+            "[KnnMatchCorners] queryMat={Cols}x{Rows}, " +
+            "sceneCorners=[{Corners}], rect=({RX},{RY},{RW},{RH})",
+            queryMat.Cols, queryMat.Rows,
+            string.Join(",", sceneCorners.Select(c => $"({c.X:F1},{c.Y:F1})")),
+            dbgRect.X, dbgRect.Y, dbgRect.Width, dbgRect.Height);
+
         return sceneCorners;
     }
 

@@ -7,6 +7,7 @@ using BetterInfinityNikki.Core.Recognition.OpenCv.FeatureMatch;
 using BetterInfinityNikki.Core.Recognition.OpenCv.Model;
 using BetterInfinityNikki.GameTask.Common.Map.Maps;
 using BetterInfinityNikki.GameTask.Common.Map.Maps.Base;
+using BetterInfinityNikki.Model;
 using Microsoft.Extensions.Logging;
 using OpenCvSharp;
 
@@ -50,6 +51,9 @@ public class BigMapNikkiLayer
     /// </summary>
     private int _loading;
 
+    private string _currentMapKey = "NikkiWorld";
+    private MapFeatureConfig? _currentFeatureConfig;
+
     private BigMapNikkiLayer(NikkiWorldMap worldMap)
     {
         _logger = App.GetLogger<BigMapNikkiLayer>();
@@ -74,8 +78,36 @@ public class BigMapNikkiLayer
     }
 
     /// <summary>
-    /// 懒加载特征数据
+    /// 切换地图特征数据
     /// </summary>
+    public void SwitchMap(string mapKey, MapFeatureConfig? featureConfig)
+    {
+        if (_currentMapKey == mapKey && _isLoaded)
+            return;
+
+        _logger.LogInformation("切换地图特征: {OldKey} -> {NewKey}", _currentMapKey, mapKey);
+        _currentMapKey = mapKey;
+        _currentFeatureConfig = featureConfig;
+
+        // 更新 NikkiWorldMap 配置
+        if (featureConfig != null)
+        {
+            _worldMap.UpdateConfig(featureConfig);
+        }
+
+        // 清除旧特征，触发重新加载
+        ClearFeatures();
+    }
+
+    private void ClearFeatures()
+    {
+        _allDescriptors?.Dispose();
+        _allDescriptors = null;
+        _allKeyPoints = null;
+        _splitBlocks = null;
+        _isLoaded = false;
+    }
+
     private void EnsureLoaded()
     {
         if (_isLoaded)
@@ -105,14 +137,11 @@ public class BigMapNikkiLayer
         }
     }
 
-    /// <summary>
-    /// 加载地图特征数据（从单个合并的特征文件）
-    /// </summary>
     private void LoadFeatures()
     {
         try
         {
-            var featuresDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "Map", "NikkiWorld");
+            var featuresDir = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "Map", _currentMapKey);
 
             if (!Directory.Exists(featuresDir))
             {
@@ -120,7 +149,7 @@ public class BigMapNikkiLayer
                 return;
             }
 
-            _logger.LogInformation("开始加载地图特征数据...");
+            _logger.LogInformation("开始加载地图特征数据: {MapKey}...", _currentMapKey);
 
             // 查找单个合并的特征文件
             var kpFiles = Directory.GetFiles(featuresDir, "*_SIFT.kp.bin");
@@ -161,7 +190,8 @@ public class BigMapNikkiLayer
             _allDescriptors = descriptors;
 
             _logger.LogInformation(
-                "特征数据加载完成: {Points} 个特征点, 描述子尺寸: {Rows}x{Cols}",
+                "特征数据加载完成: {MapKey}, {Points} 个特征点, 描述子尺寸: {Rows}x{Cols}",
+                _currentMapKey,
                 _allKeyPoints.Length,
                 _allDescriptors.Rows,
                 _allDescriptors.Cols
@@ -204,13 +234,10 @@ public class BigMapNikkiLayer
 
         try
         {
-            // 缩小截图以加快 SIFT 特征提取速度
-            // 注意：homography 输出的坐标已经是训练地图坐标（16384 空间），
-            // 因为 KnnMatchCorners 中的透视变换直接映射到训练特征坐标
             using var scaledMat = new Mat();
-            Cv2.Resize(greyBigMapMat, scaledMat, new Size(), 
-                1.0 / NikkiWorldMap.BigMapScaleFactor, 
-                1.0 / NikkiWorldMap.BigMapScaleFactor,
+            Cv2.Resize(greyBigMapMat, scaledMat, new Size(),
+                1.0 / _worldMap.BigMapScaleFactor,
+                1.0 / _worldMap.BigMapScaleFactor,
                 InterpolationFlags.Area);
 
             // KNN 匹配获取矩形
@@ -219,11 +246,9 @@ public class BigMapNikkiLayer
 
             if (resultRect == default)
             {
-                // _logger.LogDebug("特征匹配失败，未找到有效匹配");
                 return default;
             }
 
-            // _logger.LogDebug("大地图检测成功: {Rect}", resultRect);
             return resultRect;
         }
         catch (Exception ex)
@@ -233,11 +258,6 @@ public class BigMapNikkiLayer
         }
     }
 
-    /// <summary>
-    /// 不缩放地进行 SIFT 匹配（适用于小图像，如小地图）
-    /// </summary>
-    /// <param name="greyMat">灰度图像（原始尺寸，不缩小）</param>
-    /// <returns>在地图坐标系中的矩形区域</returns>
     public Rect GetBigMapRectNoScale(Mat greyMat)
     {
         EnsureLoaded();
@@ -260,11 +280,6 @@ public class BigMapNikkiLayer
         }
     }
 
-    /// <summary>
-    /// 获取小地图中心点（放宽匹配阈值，上采样后匹配）
-    /// </summary>
-    /// <param name="greyMaskedMat">灰度化并已应用圆形mask的小地图图像</param>
-    /// <returns>小地图中心在世界地图坐标系中的位置</returns>
     public Point2f GetMiniMapCenter(Mat greyMaskedMat)
     {
         EnsureLoaded();
@@ -286,21 +301,13 @@ public class BigMapNikkiLayer
         }
     }
 
-    /// <summary>
-    /// 获取大地图位置（带上一帧位置的自适应搜索）
-    /// </summary>
-    /// <param name="greyBigMapMat">灰度化的大地图截图</param>
-    /// <param name="prevRect">上一帧检测到的视口位置</param>
-    /// <returns>在游戏世界地图中的矩形区域</returns>
     public Rect GetBigMapRect(Mat greyBigMapMat, Rect prevRect)
     {
-        // 如果自适应搜索未启用或无分块索引，使用全图搜索
         if (!_config.EnableAdaptiveSearch || _splitBlocks == null)
         {
             return GetBigMapRect(greyBigMapMat);
         }
 
-        // 如果 prevRect 无效（默认值），使用全图搜索
         if (prevRect.Width <= 0 || prevRect.Height <= 0)
         {
             return GetBigMapRect(greyBigMapMat);
@@ -315,17 +322,12 @@ public class BigMapNikkiLayer
 
         try
         {
-            // 缩小截图以加快 SIFT 特征提取速度
             using var scaledMat = new Mat();
             Cv2.Resize(greyBigMapMat, scaledMat, new Size(),
-                1.0 / NikkiWorldMap.BigMapScaleFactor,
-                1.0 / NikkiWorldMap.BigMapScaleFactor,
+                1.0 / _worldMap.BigMapScaleFactor,
+                1.0 / _worldMap.BigMapScaleFactor,
                 InterpolationFlags.Area);
 
-            // _logger.LogDebug("自适应搜索: prevRect={PrevRect}, 地图尺寸={MapSize}, scaledMat={ScaledMat}",
-                // prevRect, _worldMap.MapSize, new Size(scaledMat.Cols, scaledMat.Rows));
-
-            // prevRect 已经是地图坐标（16384 空间），直接用于分块定位
             var (rowStart, rowEnd, colStart, colEnd) = KeyPointFeatureBlockHelper.GetCellRange(
                 _worldMap.MapSize,
                 _worldMap.SplitRow,
@@ -333,17 +335,12 @@ public class BigMapNikkiLayer
                 prevRect
             );
 
-            // _logger.LogInformation("分块范围: row[{RowStart}-{RowEnd}], col[{ColStart}-{ColEnd}]",
-                // rowStart, rowEnd, colStart, colEnd);
-
-            // 扩展搜索范围
             int expandBlocks = _config.AdaptiveSearchExpandBlocks;
             rowStart = Math.Max(rowStart - expandBlocks, 0);
             rowEnd = Math.Min(rowEnd + expandBlocks, _worldMap.SplitRow - 1);
             colStart = Math.Max(colStart - expandBlocks, 0);
             colEnd = Math.Min(colEnd + expandBlocks, _worldMap.SplitCol - 1);
 
-            // 合并指定范围的特征
             var searchBlock = KeyPointFeatureBlockHelper.MergeFeaturesInRange(
                 _splitBlocks,
                 _allDescriptors,
@@ -359,7 +356,6 @@ public class BigMapNikkiLayer
                 return GetBigMapRect(greyBigMapMat);
             }
 
-            // KNN 匹配（输出已经是地图坐标）
             var sift = Feature2DFactory.Get(Feature2DType.SIFT);
             var resultRect = sift.KnnMatchRect(
                 searchBlock.KeyPointList.ToArray(),
@@ -369,7 +365,6 @@ public class BigMapNikkiLayer
 
             if (resultRect == default)
             {
-                // _logger.LogDebug("自适应搜索失败，未找到有效匹配");
                 return default;
             }
 
@@ -384,24 +379,14 @@ public class BigMapNikkiLayer
         }
     }
 
-    /// <summary>
-    /// 预热：提前加载特征数据
-    /// </summary>
     public void WarmUp()
     {
         EnsureLoaded();
     }
 
-    /// <summary>
-    /// 释放资源
-    /// </summary>
     public void Dispose()
     {
-        _allDescriptors?.Dispose();
-        _allDescriptors = null;
-        _allKeyPoints = null;
-        _splitBlocks = null;
-        _isLoaded = false;
+        ClearFeatures();
 
         if (_instance != null)
         {

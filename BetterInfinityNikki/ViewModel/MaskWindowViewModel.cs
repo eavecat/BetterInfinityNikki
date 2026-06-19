@@ -281,11 +281,25 @@ public partial class MaskWindowViewModel : ObservableObject
                     foreach (var item in configData.List)
                     {
                         item.MapName = NikkiMapApiService.ParseMultiLangText(item.MapName, "zh-cn");
+
+                        // 匹配本地特征数据
+                        var featureConfig = MapFeatureRegistry.GetByWorldId(item.Id);
+                        if (featureConfig != null)
+                        {
+                            item.FeatureDir = featureConfig.MapKey;
+                            item.HasFeature = true;
+                        }
+
                         WorldConfigList.Add(item);
                     }
 
-                    // 默认选中第一个
-                    if (WorldConfigList.Count > 0)
+                    // 默认选中有特征数据的第一个
+                    var firstWithFeature = WorldConfigList.FirstOrDefault(x => x.HasFeature);
+                    if (firstWithFeature != null)
+                    {
+                        SelectedWorldConfig = firstWithFeature;
+                    }
+                    else if (WorldConfigList.Count > 0)
                     {
                         SelectedWorldConfig = WorldConfigList[0];
                     }
@@ -315,13 +329,22 @@ public partial class MaskWindowViewModel : ObservableObject
         // 切换世界，清除点位缓存
         _mapPointService?.SwitchWorld(CurrentWorldId);
 
+        // 切换特征数据
+        if (value.HasFeature && value.FeatureDir != null)
+        {
+            var featureConfig = MapFeatureRegistry.GetByKey(value.FeatureDir);
+            var layer = GameTask.Common.Map.Layers.BigMapNikkiLayer.GetInstance(
+                App.GetService<GameTask.Common.Map.Maps.NikkiWorldMap>()!);
+            layer.SwitchMap(value.FeatureDir, featureConfig);
+        }
+
         // 清除当前选中的标签和点位
         SelectedMapLabelItems.Clear();
         MapLabelItems.Clear();
         MapLabelCategories.Clear();
         SelectedCategory = null;
 
-        // 重新加载分类树（fire-and-forget，内部有loading状态）
+        // 重新加载分类树
         _ = LoadLabelCategoriesAsync();
     }
 

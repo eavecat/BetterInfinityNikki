@@ -44,9 +44,9 @@ public class MapInfo
         ["WuYouDao"] = new()
         {
             Key = "WuYouDao", Name = "无忧岛", MapResourceUrl = "tiles-wyd",
-            Level = 6,
-            StartX = 16, StartY = 5,
-            EndX = 50, EndY = 38
+            Level = 4,
+            StartX = 0, StartY = 0,
+            EndX = 15, EndY = 13
         },
         ["DanQingYu"] = new()
         {

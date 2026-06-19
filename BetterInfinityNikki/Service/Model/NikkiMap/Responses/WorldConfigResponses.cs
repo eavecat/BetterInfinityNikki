@@ -72,6 +72,18 @@ public class WorldConfigItem
 
     [JsonPropertyName("layer_lists")]
     public string LayerLists { get; set; } = string.Empty;
+
+    /// <summary>
+    /// 本地特征数据目录名（由 MapFeatureConfig 匹配设置）
+    /// </summary>
+    [JsonIgnore]
+    public string? FeatureDir { get; set; }
+
+    /// <summary>
+    /// 是否有本地特征数据
+    /// </summary>
+    [JsonIgnore]
+    public bool HasFeature { get; set; }
 }
 
 /// <summary>

@@ -2,6 +2,7 @@ using System.IO;
 using System.Text.Json;
 using System.Threading;
 using BetterInfinityNikki.Core.Config;
+using BetterInfinityNikki.Model;
 using BetterInfinityNikki.Model.MaskMap;
 using BetterInfinityNikki.Service.Interface;
 using BetterInfinityNikki.Service.Model.NikkiMap.Responses;
@@ -155,6 +156,10 @@ public sealed class MaskMapPointService : IMaskMapPointService
                 return new MaskMapPointsResult { Labels = selectedItems.ToList(), Points = Array.Empty<MaskMapPoint>() };
             }
 
+            var featureConfig = int.TryParse(worldId, out var wid)
+                ? MapFeatureRegistry.GetByWorldId(wid)
+                : null;
+
             var points = new List<MaskMapPoint>();
             foreach (var spawner in _allSpawners!)
             {
@@ -164,7 +169,9 @@ public sealed class MaskMapPointService : IMaskMapPointService
                 var webX = spawner.X;
                 var webY = spawner.Y;
 
-                var (imageX, imageY) = GameWebMapCoordinateConverter.WebToImage(webX, webY);
+                var (imageX, imageY) = featureConfig != null
+                    ? GameWebMapCoordinateConverter.WebToImage(webX, webY, featureConfig)
+                    : (0.0, 0.0);
                 var (gameX, gameY) = GameWebMapCoordinateConverter.WebToGame(webX, webY);
 
                 points.Add(new MaskMapPoint
