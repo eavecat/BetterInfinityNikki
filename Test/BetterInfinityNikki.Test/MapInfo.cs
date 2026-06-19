@@ -31,15 +31,15 @@ public class MapInfo
         {
             Key = "WanXiangJing", Name = "万相境", MapResourceUrl = "tiles-wxj",
             Level = 5,
-            StartX = 8, StartY = 4,
-            EndX = 23, EndY = 16
+            StartX = 0, StartY = 0,
+            EndX = 31, EndY = 23
         },
         ["HuaYanQunDao"] = new()
         {
             Key = "HuaYanQunDao", Name = "花焰群岛", MapResourceUrl = "tiles-hyqd-20250311",
-            Level = 6,
+            Level = 4,
             StartX = 0, StartY = 0,
-            EndX = 63, EndY = 63
+            EndX = 15, EndY = 7
         },
         ["WuYouDao"] = new()
         {
@@ -51,16 +51,16 @@ public class MapInfo
         ["DanQingYu"] = new()
         {
             Key = "DanQingYu", Name = "丹青屿", MapResourceUrl = "tiles-bsj-16384",
-            Level = 6,
-            StartX = 18, StartY = 2,
-            EndX = 48, EndY = 40
+            Level = 4,
+            StartX = 0, StartY = 0,
+            EndX = 15, EndY = 10
         },
         ["DanQingZhiJing"] = new()
         {
             Key = "DanQingZhiJing", Name = "丹青之境", MapResourceUrl = "tiles-lsj-16384",
-            Level = 6,
+            Level = 4,
             StartX = 0, StartY = 0,
-            EndX = 63, EndY = 63
+            EndX = 15, EndY = 10
         },
     };
 }

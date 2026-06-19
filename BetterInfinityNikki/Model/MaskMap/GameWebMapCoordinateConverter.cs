@@ -6,10 +6,11 @@ public static class GameWebMapCoordinateConverter
 {
     public static (double imageX, double imageY) WebToImage(double webX, double webY, MapFeatureConfig config)
     {
-        var offsetBase = config.OffsetBase;
+        var offsetBaseX = config.OffsetBaseX;
+        var offsetBaseY = config.OffsetBaseY;
         var scale = config.WebToImageScale;
-        var offsetX = webX / offsetBase * 128;
-        var offsetY = webY / offsetBase * 128;
+        var offsetX = webX / offsetBaseX * 128;
+        var offsetY = webY / offsetBaseY * 128;
         return ((webX - offsetX) * scale, (webY - offsetY) * scale);
     }
 

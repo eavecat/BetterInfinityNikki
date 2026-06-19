@@ -294,7 +294,7 @@ public static class Feature2DExtensions
         speedTimer.DebugPrint();
 
         var dbgRect = Cv2.BoundingRect(sceneCorners);
-        Serilog.Log.Information(
+        Serilog.Log.Debug(
             "[KnnMatchCorners] queryMat={Cols}x{Rows}, " +
             "sceneCorners=[{Corners}], rect=({RX},{RY},{RW},{RH})",
             queryMat.Cols, queryMat.Rows,

@@ -52,11 +52,18 @@ public class MapFeatureConfig
 
     /// <summary>
     /// Web→Image 坐标转换用的偏移基准
+    /// 每调整 64 对应图像坐标偏移 1 像素
     /// </summary>
-    public double OffsetBase { get; set; } = 4096 + 64 * 32;
+    public double OffsetBaseX { get; set; } = 16384 + 64 * -36;
+
+    /// <summary>
+    /// Web→Image 坐标转换用的偏移基准
+    /// 每调整 64 对应图像坐标偏移 1 像素
+    /// </summary>
+    public double OffsetBaseY { get; set; } = 16384 + 64 * -36;
 
     /// <summary>
     /// Web→Image 坐标转换用的缩放系数
     /// </summary>
-    public double WebToImageScale { get; set; } = 1.0 / 39.0;
+    public double WebToImageScale { get; set; } = 1.0 / 64.0;
 }
