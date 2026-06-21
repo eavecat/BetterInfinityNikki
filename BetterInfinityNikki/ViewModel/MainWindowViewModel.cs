@@ -60,10 +60,42 @@ public partial class MainWindowViewModel : ObservableObject, IViewModel
     private async Task OnLoaded()
     {
         _logger.LogInformation("主窗口加载完成");
-        
+
         // 应用上次保存的主题
         ApplyTheme(Config.CommonConfig.CurrentThemeType);
-        await Task.CompletedTask;
+
+        // 启动时自动检查更新
+        try
+        {
+            var updateService = App.GetService<IUpdateService>();
+            if (updateService != null)
+            {
+                await updateService.CheckUpdateAsync(new BetterInfinityNikki.Model.UpdateOption
+                {
+                    Trigger = BetterInfinityNikki.Model.UpdateTrigger.Auto
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "启动时检查更新失败");
+        }
+    }
+
+    /// <summary>
+    /// 手动触发检查更新（可由设置页面或菜单调用）
+    /// </summary>
+    [RelayCommand]
+    private async Task CheckUpdateManual()
+    {
+        var updateService = App.GetService<IUpdateService>();
+        if (updateService != null)
+        {
+            await updateService.CheckUpdateAsync(new BetterInfinityNikki.Model.UpdateOption
+            {
+                Trigger = BetterInfinityNikki.Model.UpdateTrigger.Manual
+            });
+        }
     }
 
     /// <summary>

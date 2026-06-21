@@ -77,6 +77,12 @@ public partial class AllConfig : ObservableObject
     [ObservableProperty]
     private int _triggerInterval = 50;
 
+    /// <summary>
+    /// 不展示新版本提示的最新版本（用户点击"不再提示"时写入）
+    /// </summary>
+    [ObservableProperty]
+    private string _notShowNewVersionNoticeEndVersion = "";
+
     [JsonIgnore]
     public Action? OnAnyChangedAction { get; set; }
 

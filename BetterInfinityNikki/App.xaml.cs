@@ -105,6 +105,9 @@ public partial class App : Application
                 // Mask Map Point Service
                 services.AddSingleton<IMaskMapPointService, MaskMapPointService>();
 
+                // Update Service
+                services.AddSingleton<IUpdateService, UpdateService>();
+
                 // Memory Cache & File Cache (for icon loading)
                 services.AddMemoryCache();
                 services.AddSingleton<IAppCache, CachingService>();
