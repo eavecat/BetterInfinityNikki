@@ -1,0 +1,32 @@
+{
+  "source": [
+    {
+      "id": "local",
+      "name": "本地测试版",
+      "uri": "dfs2+packed+http://localhost:5001/resource/BetterIN.Install.exe"
+    }
+  ],
+  "appName": "BetterIN",
+  "publisher": "liuxia",
+  "regName": "BetterIN",
+  "exeName": "BetterIN.exe",
+  "uninstallName": "BetterIN.uninst.exe",
+  "updaterName": "BetterIN.update.exe",
+  "programFilesPath": "BetterIN",
+  "title": "BetterIN",
+  "description": "更好的无限暖暖",
+  "windowTitle": "BetterIN 安装程序",
+  "ignoreFolderPath": [
+    "${INSTALL_PATH}/User"
+  ],
+  "userDataPath": [
+    "${INSTALL_PATH}/User"
+  ],
+  "extraUninstallPath": [
+    "${INSTALL_PATH}/log"
+  ],
+  "uacStrategy": "prefer-admin",
+  "runtimes": [
+    "Microsoft.DotNet.DesktopRuntime.8"
+  ]
+}

@@ -20,6 +20,8 @@ bld/
 [Oo]bj/
 [Ll]og/
 BuildNikki/*.exe
+BuildNikki/dist
+BuildNikki/hashed
 
 # Mine
 Tmp/
