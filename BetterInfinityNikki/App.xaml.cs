@@ -22,6 +22,7 @@ using Serilog.Events;
 using Serilog.Sinks.RichTextBox.Abstraction;
 using Wpf.Ui;
 using Wpf.Ui.DependencyInjection;
+using BetterInfinityNikki.Helpers;
 using Vanara.PInvoke;
 
 namespace BetterInfinityNikki;
@@ -29,6 +30,7 @@ namespace BetterInfinityNikki;
 public partial class App : Application
 {
     private static readonly IHost _host = Host.CreateDefaultBuilder()
+        .UseElevated()
         .ConfigureLogging(builder => { builder.ClearProviders(); })
         .ConfigureServices((context, services) =>
             {
