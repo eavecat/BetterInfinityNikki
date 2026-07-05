@@ -16,6 +16,11 @@ public class MapFeatureConfig
     public string MapKey { get; set; } = string.Empty;
 
     /// <summary>
+    /// 地图名称
+    /// </summary>
+    public string MapName { get; set; } = string.Empty;
+
+    /// <summary>
     /// 特征图像素宽度
     /// </summary>
     public int ImageWidth { get; set; }

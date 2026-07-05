@@ -36,6 +36,12 @@ public interface IMaskMapPointService
     Task UpdateCacheAsync(string worldId, CancellationToken ct = default);
 
     /// <summary>
+    /// 更新所有已缓存的世界地图数据
+    /// </summary>
+    /// <returns>更新的世界数量，0表示没有可更新的缓存</returns>
+    Task<int> UpdateAllCacheAsync(CancellationToken ct = default);
+
+    /// <summary>
     /// 从API获取用户收集进度数据并缓存到本地
     /// </summary>
     Task UpdateCollectedCacheAsync(CancellationToken ct = default);

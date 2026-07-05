@@ -71,8 +71,15 @@ public partial class TriggerSettingsPageViewModel : ViewModel
         IsUpdatingMapPointCache = true;
         try
         {
-            await _mapPointService.UpdateCacheAsync("1");
-            await ThemedMessageBox.SuccessAsync("点位缓存数据已更新完成");
+            var count = await _mapPointService.UpdateAllCacheAsync();
+            if (count == 0)
+            {
+                await ThemedMessageBox.WarningAsync("没有找到已缓存的地图数据，请先加载地图后再更新");
+            }
+            else
+            {
+                await ThemedMessageBox.SuccessAsync($"已更新 {count} 个世界的点位缓存数据");
+            }
         }
         catch (Exception ex)
         {

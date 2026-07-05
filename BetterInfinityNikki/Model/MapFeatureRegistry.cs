@@ -1,4 +1,5 @@
 using BetterInfinityNikki.Model;
+using OpenCvSharp;
 
 namespace BetterInfinityNikki;
 
@@ -24,6 +25,7 @@ public static class MapFeatureRegistry
         {
             WorldId = 1,
             MapKey = "NikkiWorld",
+            MapName = "大世界",
             ImageWidth = 16384,
             ImageHeight = 16384,
             OriginX = 0,
@@ -39,6 +41,7 @@ public static class MapFeatureRegistry
         {
             WorldId = 4020034,
             MapKey = "WanXiangJing",
+            MapName = "万相境",
             ImageWidth = 8192,
             ImageHeight = 6144,
             OriginX = 0,
@@ -54,6 +57,7 @@ public static class MapFeatureRegistry
         {
             WorldId = 10000010,
             MapKey = "DanQingYu",
+            MapName = "丹青屿",
             ImageWidth = 4096,
             ImageHeight = 2816,
             OriginX = 0,
@@ -69,6 +73,7 @@ public static class MapFeatureRegistry
         {
             WorldId = 10000027,
             MapKey = "DanQingZhiJing",
+            MapName = "丹青之境",
             ImageWidth = 4096,
             ImageHeight = 2816,
             OriginX = 0,
@@ -84,6 +89,7 @@ public static class MapFeatureRegistry
         {
             WorldId = 10000002,
             MapKey = "WuYouDao",
+            MapName = "无忧岛",
             ImageWidth = 4096,
             ImageHeight = 3584,
             OriginX = 0,
@@ -99,6 +105,7 @@ public static class MapFeatureRegistry
         {
             WorldId = 10000001,
             MapKey = "HuaYanQunDao",
+            MapName = "花焰群岛",
             ImageWidth = 4096,
             ImageHeight = 2048,
             OriginX = 0,
@@ -131,5 +138,17 @@ public static class MapFeatureRegistry
     public static MapFeatureConfig? GetByKey(string mapKey)
     {
         return Maps.TryGetValue(mapKey, out var cfg) ? cfg : null;
+    }
+
+    /// <summary>
+    /// 根据 MapKey 查找地图名称
+    /// </summary>
+    public static string? GetNameByKey(string? mapKey)
+    {
+        if (mapKey == null)
+        {
+            return null;
+        }
+        return Maps.TryGetValue(mapKey, out var cfg) ? cfg.MapName : mapKey;
     }
 }

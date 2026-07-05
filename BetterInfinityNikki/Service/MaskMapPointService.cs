@@ -1,6 +1,7 @@
 using System.IO;
 using System.Text.Json;
 using System.Threading;
+using BetterInfinityNikki;
 using BetterInfinityNikki.Core.Config;
 using BetterInfinityNikki.Model;
 using BetterInfinityNikki.Model.MaskMap;
@@ -38,7 +39,8 @@ public sealed class MaskMapPointService : IMaskMapPointService
     private static string GetSpawnerCachePath(string worldId) =>
         Path.Combine(CacheDir, $"spawner_list_{worldId}.json");
 
-    public async Task<IReadOnlyList<MaskMapPointLabel>> GetLabelCategoriesAsync(string worldId, CancellationToken ct = default)
+    public async Task<IReadOnlyList<MaskMapPointLabel>> GetLabelCategoriesAsync(string worldId,
+        CancellationToken ct = default)
     {
         try
         {
@@ -132,7 +134,8 @@ public sealed class MaskMapPointService : IMaskMapPointService
         }
     }
 
-    public async Task<MaskMapPointsResult> GetPointsAsync(string worldId, IReadOnlyList<MaskMapPointLabel> selectedItems, CancellationToken ct = default)
+    public async Task<MaskMapPointsResult> GetPointsAsync(string worldId,
+        IReadOnlyList<MaskMapPointLabel> selectedItems, CancellationToken ct = default)
     {
         try
         {
@@ -153,7 +156,8 @@ public sealed class MaskMapPointService : IMaskMapPointService
 
             if (selectedIds.Count == 0)
             {
-                return new MaskMapPointsResult { Labels = selectedItems.ToList(), Points = Array.Empty<MaskMapPoint>() };
+                return new MaskMapPointsResult
+                    { Labels = selectedItems.ToList(), Points = Array.Empty<MaskMapPoint>() };
             }
 
             var featureConfig = int.TryParse(worldId, out var wid)
@@ -269,7 +273,9 @@ public sealed class MaskMapPointService : IMaskMapPointService
     {
         if (_currentWorldId == worldId) return;
 
-        _logger.LogInformation("切换世界: {OldWorldId} -> {NewWorldId}", _currentWorldId, worldId);
+        _logger.LogInformation("切换世界: {OldWorldId} -> {NewWorldId}",
+            MapFeatureRegistry.GetNameByKey(_currentWorldId),
+            MapFeatureRegistry.GetNameByKey(worldId));
         _currentWorldId = worldId;
         _allSpawners = null;
     }
@@ -361,6 +367,71 @@ public sealed class MaskMapPointService : IMaskMapPointService
         }
     }
 
+    public async Task<int> UpdateAllCacheAsync(CancellationToken ct = default)
+    {
+        await _loadLock.WaitAsync(ct);
+        try
+        {
+            var worldIds = GetCachedWorldIds();
+
+            if (worldIds.Count == 0)
+            {
+                _logger.LogInformation("没有找到已缓存的世界数据，跳过更新");
+                return 0;
+            }
+
+            _logger.LogInformation("开始更新所有已缓存的世界地图数据，共 {Count} 个世界", worldIds.Count);
+
+            foreach (var worldId in worldIds)
+            {
+                _allSpawners = null;
+
+                var catalogCache = GetCatalogCachePath(worldId);
+                var spawnerCache = GetSpawnerCachePath(worldId);
+
+                if (File.Exists(catalogCache))
+                    File.Delete(catalogCache);
+                if (File.Exists(spawnerCache))
+                    File.Delete(spawnerCache);
+
+                _logger.LogInformation("已清除点位缓存文件，开始重新获取数据, worldId={WorldId}", worldId);
+
+                // await GetLabelCategoriesAsync(worldId, ct);
+                // await LoadSpawnersCoreAsync(worldId, ct);
+
+                _logger.LogInformation("点位缓存数据更新完成, worldId={WorldId}", worldId);
+            }
+
+            _logger.LogInformation("所有世界地图数据更新完成");
+            return worldIds.Count;
+        }
+        finally
+        {
+            _loadLock.Release();
+        }
+    }
+
+    private List<string> GetCachedWorldIds()
+    {
+        var worldIds = new List<string>();
+
+        if (!Directory.Exists(CacheDir))
+            return worldIds;
+
+        var catalogFiles = Directory.GetFiles(CacheDir, "catalog_list_*.json");
+        foreach (var file in catalogFiles)
+        {
+            var fileName = Path.GetFileNameWithoutExtension(file);
+            var worldId = fileName.Replace("catalog_list_", "");
+            if (!string.IsNullOrEmpty(worldId))
+            {
+                worldIds.Add(worldId);
+            }
+        }
+
+        return worldIds;
+    }
+
     private async Task EnsureCollectedDataLoadedAsync(CancellationToken ct)
     {
         if (_collectedDataLoaded) return;
@@ -380,6 +451,7 @@ public sealed class MaskMapPointService : IMaskMapPointService
                     {
                         _collectedSpawnerIds = FlattenCollectedIds(data);
                     }
+
                     _logger.LogDebug("从缓存加载收集数据，共 {Count} 个已收集点位", _collectedSpawnerIds.Count);
                 }
                 catch (Exception ex)
