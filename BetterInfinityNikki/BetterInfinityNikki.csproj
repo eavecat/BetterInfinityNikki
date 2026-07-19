@@ -2,7 +2,7 @@
 
 	<PropertyGroup>
 		<AssemblyName>BetterIN</AssemblyName>
-		<Version>0.1.0-alpha.1</Version>
+		<Version>0.1.0-alpha.6</Version>
 		<IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
 		<OutputType>WinExe</OutputType>
 		<TargetFramework>net8.0-windows10.0.22621.0</TargetFramework>
@@ -113,5 +113,23 @@
 	  <Folder Include="View\Pages\" />
 	  <Folder Include="ViewModel\Pages\" />
 	</ItemGroup>
+
+	<!-- 删除不需要的模型文件 -->
+	<Target Name="RemoveUnusedModels" AfterTargets="Build;Publish">
+		<Delete Files="$(OutputPath)Assets\Model\Common\avatar_side_classify_sim.onnx" />
+		<Delete Files="$(OutputPath)Assets\Model\Domain\bgi_tree.onnx" />
+		<Delete Files="$(OutputPath)Assets\Model\Fish\bgi_fish.onnx" />
+		<Delete Files="$(OutputPath)Assets\Model\Mine\bgi_mine.onnx" />
+		<Delete Files="$(OutputPath)Assets\Model\World\bgi_world.onnx" />
+		<Delete Files="$(OutputPath)Assets\Model\Item\gridIcon.onnx" />
+		<Delete Files="$(OutputPath)Assets\Model\Item\items.csv" />
+		<Delete Files="$(PublishDir)Assets\Model\Common\avatar_side_classify_sim.onnx" />
+		<Delete Files="$(PublishDir)Assets\Model\Domain\bgi_tree.onnx" />
+		<Delete Files="$(PublishDir)Assets\Model\Fish\bgi_fish.onnx" />
+		<Delete Files="$(PublishDir)Assets\Model\Mine\bgi_mine.onnx" />
+		<Delete Files="$(PublishDir)Assets\Model\World\bgi_world.onnx" />
+		<Delete Files="$(PublishDir)Assets\Model\Item\gridIcon.onnx" />
+		<Delete Files="$(PublishDir)Assets\Model\Item\items.csv" />
+	</Target>
 
 </Project>

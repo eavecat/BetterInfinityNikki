@@ -1,5 +1,7 @@
+using System.Threading.Tasks;
 using System.Windows;
-using Wpf.Ui;
+using BetterInfinityNikki.Model;
+using BetterInfinityNikki.Service.Interface;
 
 namespace BetterInfinityNikki.ViewModel;
 
@@ -8,6 +10,7 @@ public partial class NotifyIconViewModel : ObservableObject
     [RelayCommand]
     public void Exit()
     {
+        App.GetService<IConfigService>()?.Save();
         Application.Current.Shutdown();
     }
 
@@ -25,7 +28,21 @@ public partial class NotifyIconViewModel : ObservableObject
             {
                 mainWindow.Show();
                 mainWindow.Activate();
+                mainWindow.Focus();
             }
+        }
+    }
+
+    [RelayCommand]
+    public async Task CheckUpdateAsync()
+    {
+        var updateService = App.GetService<IUpdateService>();
+        if (updateService != null)
+        {
+            await updateService.CheckUpdateAsync(new UpdateOption
+            {
+                Trigger = UpdateTrigger.Manual
+            });
         }
     }
 }

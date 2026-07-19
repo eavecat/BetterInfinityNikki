@@ -3,7 +3,7 @@
     {
       "id": "local",
       "name": "本地测试版",
-      "uri": "dfs2+packed+http://localhost:5001/resource/BetterIN.Install.exe"
+      "uri": "dfs2+packed+http://localhost:5000/resource/BetterIN.Install.exe"
     }
   ],
   "appName": "BetterIN",

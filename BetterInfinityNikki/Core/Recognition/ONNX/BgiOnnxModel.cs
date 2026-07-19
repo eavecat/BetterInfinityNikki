@@ -30,32 +30,6 @@ public class BgiOnnxModel
         Register("YapModelTraining", @"Assets\Model\Yap\model_training.onnx");
 
     /// <summary>
-    /// 钓鱼模型
-    /// </summary>
-    public static readonly BgiOnnxModel BgiFish = Register("BgiFish", @"Assets\Model\Fish\bgi_fish.onnx");
-
-    /// <summary>
-    /// 秘境中古树
-    /// </summary>
-    public static readonly BgiOnnxModel BgiTree = Register("BgiTree", @"Assets\Model\Domain\bgi_tree.onnx");
-
-    /// <summary>
-    /// 用于捡东西等的大世界模型
-    /// </summary>
-    public static readonly BgiOnnxModel BgiWorld = Register("BgiTree", @"Assets\Model\World\bgi_world.onnx");
-
-    /// <summary>
-    /// 矿物识别模型
-    /// </summary>
-    public static readonly BgiOnnxModel BgiMine = Register("BgiMine", @"Assets\Model\Mine\bgi_mine.onnx");
-
-    /// <summary>
-    /// 角色识别
-    /// </summary>
-    public static readonly BgiOnnxModel BgiAvatarSide =
-        Register("BgiAvatarSide", @"Assets\Model\Common\avatar_side_classify_sim.onnx");
-
-    /// <summary>
     /// paddleOCR V4 检测模型
     /// </summary>
     public static readonly BgiOnnxModel PaddleOcrDetV4 =
