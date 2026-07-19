@@ -1,8 +1,11 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Net;
 using System.Net.Http;
 using System.Net.Http.Json;
+using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
 using BetterInfinityNikki.Core.Config;
@@ -106,51 +109,118 @@ public class UpdateService : IUpdateService
 
     private async Task OpenCheckUpdateWindowAsync(UpdateOption option, CheckResponseData latest)
     {
-        var win = new CheckUpdateWindow(option, latest)
+        CheckUpdateWindow win = new(option, latest)
         {
             Owner = Application.Current.MainWindow,
             WindowStartupLocation = WindowStartupLocation.CenterOwner,
-            Title = $"发现新版本 {latest.Version}"
-        };
-
-        win.OnUserAction += async button =>
-        {
-            switch (button)
+            Title = $"发现新版本 {latest.Version}",
+            UserInteraction = async (sender, button) =>
             {
-                case CheckUpdateAction.Update:
-                    await RunUpdaterAsync();
-                    break;
+                switch (button)
+                {
+                    case CheckUpdateWindow.CheckUpdateWindowButton.OtherUpdate:
+                        var downloadUrl = !string.IsNullOrEmpty(latest.DownloadPageUrl)
+                            ? latest.DownloadPageUrl
+                            : "https://www.bettergi.com/download.html";
+                        Process.Start(new ProcessStartInfo(downloadUrl) { UseShellExecute = true });
+                        break;
 
-                case CheckUpdateAction.ManualDownload:
-                    if (!string.IsNullOrEmpty(latest.DownloadPageUrl))
-                    {
-                        Process.Start(new ProcessStartInfo(latest.DownloadPageUrl) { UseShellExecute = true });
-                    }
-                    break;
+                    case CheckUpdateWindow.CheckUpdateWindowButton.Ignore:
+                        Config.NotShowNewVersionNoticeEndVersion = latest.Version;
+                        break;
 
-                case CheckUpdateAction.Ignore:
-                    Config.NotShowNewVersionNoticeEndVersion = latest.Version;
-                    break;
-
-                case CheckUpdateAction.Cancel:
-                default:
-                    break;
+                    case CheckUpdateWindow.CheckUpdateWindowButton.Cancel:
+                    default:
+                        break;
+                }
             }
         };
 
-        await Task.Run(() => Application.Current.Dispatcher.Invoke(() => win.ShowDialog()));
-    }
-
-    private async Task RunUpdaterAsync()
-    {
-        var updaterExePath = Global.Absolute("BetterIN.update.exe");
-        if (!File.Exists(updaterExePath))
+        if (!string.IsNullOrEmpty(latest.ReleaseNotes))
         {
-            await ThemedMessageBox.ErrorAsync("更新程序不存在（BetterIN.update.exe），请选择手动下载方式！");
-            return;
+            win.NavigateToHtml(BuildReleaseMarkdownHtml(latest.Version, latest.ReleaseNotes));
+        }
+        else
+        {
+            win.NavigateToHtml(await GetReleaseMarkdownHtmlAsync());
         }
 
-        Process.Start(new ProcessStartInfo(updaterExePath, "-I") { UseShellExecute = true });
-        Application.Current.Shutdown();
+        win.ShowDialog();
+    }
+
+    private string BuildReleaseMarkdownHtml(string version, string releaseNotes)
+    {
+        string md = $"# v{version}{new string('\n', 2)}{releaseNotes}";
+        md = WebUtility.HtmlEncode(md);
+        string md2html = File.ReadAllText(Global.Absolute(@"Assets\Strings\md2html.html"), Encoding.UTF8);
+        return md2html.Replace("{{content}}", md);
+    }
+
+    private async Task<string> GetReleaseMarkdownHtmlAsync()
+    {
+        try
+        {
+            using HttpClient httpClient = new();
+            httpClient.DefaultRequestHeaders.UserAgent.ParseAdd("Mozilla/5.0 (Windows NT 10.0; Win64; x64)");
+            string jsonString =
+                await httpClient.GetStringAsync(
+                    "https://api.github.com/repos/babalae/better-genshin-impact/releases/latest");
+            var jsonDict = JsonConvert.DeserializeObject<Dictionary<string, object>>(jsonString);
+
+            if (jsonDict != null)
+            {
+                string? name = jsonDict["name"] as string;
+                string? body = jsonDict["body"] as string;
+                string md = $"# {name}{new string('\n', 2)}{body}";
+
+                md = WebUtility.HtmlEncode(md);
+                string md2html = File.ReadAllText(Global.Absolute(@"Assets\Strings\md2html.html"), Encoding.UTF8);
+                var html = md2html.Replace("{{content}}", md);
+
+                return html;
+            }
+        }
+        catch (Exception e)
+        {
+            _logger.LogDebug(e, "获取 GitHub Release 更新说明失败");
+        }
+
+        return GetReleaseMarkdownHtmlFallback();
+    }
+
+    private string GetReleaseMarkdownHtmlFallback()
+    {
+        return
+            """
+            <!DOCTYPE html>
+            <html lang="zh">
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>更新日志</title>
+                <style>
+                    body {
+                        background-color: #212121;
+                        color: white;
+                        font-family: Arial, sans-serif;
+                        display: flex;
+                        justify-content: center;
+                        align-items: center;
+                        height: 100vh;
+                        margin: 0;
+                    }
+                    .message {
+                        text-align: center;
+                        font-size: 20px;
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="message">
+                    获取更新日志失败，请自行选择是否更新！
+                </div>
+            </body>
+            </html>
+            """;
     }
 }

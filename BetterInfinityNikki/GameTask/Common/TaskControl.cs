@@ -1,4 +1,4 @@
-﻿using System.Threading;
+using System.Threading;
 using BetterInfinityNikki.Core.Simulator;
 using BetterInfinityNikki.GameTask.Common.Exceptions;
 using BetterInfinityNikki.GameTask.Model.Area;
@@ -182,14 +182,14 @@ public class TaskControl
 
     public static Mat CaptureGameImage(IGameCapture? gameCapture)
     {
-        var image = gameCapture?.Capture();
+        var image = gameCapture?.Capture()?.Frame;
         if (image == null)
         {
             Logger.LogWarning("截图失败!");
             // 重试3次
             for (var i = 0; i < 3; i++)
             {
-                image = gameCapture?.Capture();
+                image = gameCapture?.Capture()?.Frame;
                 if (image != null)
                 {
                     return image;
@@ -208,7 +208,7 @@ public class TaskControl
 
     public static Mat? CaptureGameImageNoRetry(IGameCapture? gameCapture)
     {
-        return gameCapture?.Capture();
+        return gameCapture?.Capture()?.Frame;
     }
 
     /// <summary>

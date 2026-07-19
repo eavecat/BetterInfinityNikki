@@ -10,6 +10,7 @@
                 <ui:ThemesDictionary Theme="Dark" />
                 <ui:ControlsDictionary />
                 <vio:ControlsDictionary />
+                <ResourceDictionary Source="/View/Controls/WpfUi/FaFontIconStyle.xaml" />
             </ResourceDictionary.MergedDictionaries>
 
             <FontFamily x:Key="TextThemeFontFamily">/Resources/Fonts/MiSans-Regular.ttf#MiSans</FontFamily>

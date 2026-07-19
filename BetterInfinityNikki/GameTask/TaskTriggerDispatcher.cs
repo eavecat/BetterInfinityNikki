@@ -325,7 +325,7 @@ namespace BetterInfinityNikki.GameTask
                 }
 
                 // 循环执行所有触发器
-                using var content = new CaptureContent(bitmap, _frameIndex, _timer.Interval);
+                using var content = new CaptureContent(bitmap.Frame, _frameIndex, _timer.Interval);
 
                 if (!hasEnabledTriggers)
                 {

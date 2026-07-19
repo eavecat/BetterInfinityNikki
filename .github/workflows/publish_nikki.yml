@@ -1,0 +1,288 @@
+name: BetterIN Publish
+run-name: "BetterIN ${{ inputs.version }}"
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'BetterIN Version (eg: 0.1.0-alpha.7)'
+        required: true
+        type: string
+      kachina-channel:
+        type: choice
+        description: 'Kachina Installer Channel'
+        required: true
+        default: 'release'
+        options:
+          - release
+          - dev
+      create-release:
+        type: boolean
+        description: '创建 GitHub Release 草稿'
+        required: true
+        default: false
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.set-version.outputs.version }}
+    steps:
+      - name: Set version from input or tag
+        id: set-version
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            if ! [[ "${{ github.event.inputs.version }}" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?(\+[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$ ]]; then
+              echo "❌ 错误：版本格式必须符合语义化版本规范"
+              exit 1
+            fi
+            echo "version=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+            echo "✨ 手动触发构建，版本号：${{ github.event.inputs.version }}"
+          else
+            VERSION=${GITHUB_REF#refs/tags/v}
+            echo "version=${VERSION}" >> $GITHUB_OUTPUT
+            echo "🏷️ 从 tag 触发构建，版本号：${VERSION}"
+          fi
+
+  build_dist:
+    runs-on: windows-latest
+    needs: [validate]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.x
+      - name: 更新 csproj 文件版本号
+        run: |
+          $version = '${{ needs.validate.outputs.version }}'
+          (Get-Content BetterInfinityNikki/BetterInfinityNikki.csproj) -replace '<Version>.*</Version>', "<Version>$version</Version>" | Set-Content BetterInfinityNikki/BetterInfinityNikki.csproj
+      - name: 自动提交更改
+        if: github.repository_owner == 'eavecat'
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "Update BetterIN version to ${{ needs.validate.outputs.version }}"
+          branch: main
+          file_pattern: BetterInfinityNikki/BetterInfinityNikki.csproj
+      - name: Cache NuGet packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-nikki-${{ hashFiles('**/BetterInfinityNikki.csproj') }}
+          restore-keys: |
+            ${{ runner.os }}-nuget-nikki-
+      - name: 🛠️ Build application
+        run: dotnet publish BetterInfinityNikki/BetterInfinityNikki.csproj -c Release -p:PublishProfile=FolderProfile -p:Version=${{ needs.validate.outputs.version }}
+        continue-on-error: true
+      - name: 🧹 Clear & Move Files
+        run: |
+            $sourceDir = ".\BetterInfinityNikki\bin\x64\Release\net8.0-windows10.0.22621.0\publish\win-x64"
+            Get-ChildItem -Path $sourceDir -Recurse -Filter "*.lib" | Remove-Item -Force
+            Get-ChildItem -Path $sourceDir -Recurse -Filter "*ffmpeg*.dll" | Remove-Item -Force
+            Get-ChildItem -Path $sourceDir -Recurse -Filter "*.pdb" | Remove-Item -Force
+            New-Item -Path "dist/BetterIN" -ItemType Directory
+            xcopy "$sourceDir\*" ".\dist\BetterIN\" /E /H /I /Y
+      - name: 📥 Download kachina-builder release
+        if: ${{ github.event.inputs.kachina-channel == 'release' }}
+        uses: robinraju/release-downloader@v1.8
+        with:
+          repository: "YuehaiTeam/kachina-installer"
+          latest: true
+          fileName: "kachina-builder.exe"
+      - name: 📥 Download kachina-builder dev
+        if: ${{ github.event.inputs.kachina-channel == 'dev' }}
+        uses: dawidd6/action-download-artifact@v8
+        with:
+          github_token: ${{secrets.GITHUB_TOKEN}}
+          repo: "YuehaiTeam/kachina-installer"
+          workflow: "build.yml"
+          name: artifact
+          branch: main
+          event: push
+          workflow_conclusion: success
+      - name: 📦 Gen Updater by kachina-builder
+        run: |
+          cd dist
+          ..\kachina-builder.exe pack -c ..\BuildNikki\kachina_nikki.json -o BetterIN/BetterIN.update.exe
+      - name: 📦 Generate archive
+        run: |
+          cd dist
+          7z a "BetterIN_v${{ needs.validate.outputs.version }}.7z" BetterIN -t7z -mx=5 -mf=BCJ2 -r -y
+      - uses: actions/upload-artifact@v4
+        with:
+          name: BetterIN_7z
+          path: dist/BetterIN_*.7z
+
+  build_installer:
+    runs-on: windows-latest
+    needs: [validate, build_dist]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: BetterIN_7z
+          path: dist
+      - name: Unpack BetterIN_*.7z
+        run: |
+          cd dist
+          7z x "BetterIN_v${{ needs.validate.outputs.version }}.7z"
+      - name: 📥 Download kachina-builder release
+        if: ${{ github.event.inputs.kachina-channel == 'release' }}
+        uses: robinraju/release-downloader@v1.8
+        with:
+          repository: "YuehaiTeam/kachina-installer"
+          latest: true
+          fileName: "kachina-builder.exe"
+      - name: 📥 Download kachina-builder dev
+        if: ${{ github.event.inputs.kachina-channel == 'dev' }}
+        uses: dawidd6/action-download-artifact@v8
+        with:
+          github_token: ${{secrets.GITHUB_TOKEN}}
+          repo: "YuehaiTeam/kachina-installer"
+          workflow: "build.yml"
+          name: artifact
+          branch: main
+          event: push
+          workflow_conclusion: success
+      - name: 📥 Download last release
+        uses: robinraju/release-downloader@v1.8
+        with:
+          repository: ${{ github.repository }}
+          latest: true
+          fileName: "BetterIN_v*.7z"
+          out-file-path: 'last'
+      - name: 📥 Get 2nd and 3rd release
+        id: release_tags
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $releasesUrl = "https://api.github.com/repos/${{ github.repository }}/releases"
+          $headers = @{
+              "Authorization" = "Bearer $env:GITHUB_TOKEN"
+              "Accept" = "application/vnd.github.v3+json"
+          }
+          $releases = Invoke-RestMethod -Uri $releasesUrl -Headers $headers -Method Get
+          $validReleases = $releases |
+          Where-Object { -not $_.draft -and -not $_.prerelease } |
+          Sort-Object { [DateTime]$_.published_at } -Descending
+          if ($validReleases.Count -lt 3) {
+              Write-Error "至少需要 3 个正式 Release（当前找到 $($validReleases.Count) 个）"
+              exit 1
+          }
+          "second_release_tag=$($validReleases[1].tag_name)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          "third_release_tag=$($validReleases[2].tag_name)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+
+      - name: 📥 Download 2nd last release
+        uses: robinraju/release-downloader@v1.8
+        with:
+          repository: ${{ github.repository }}
+          tag: ${{ steps.release_tags.outputs.second_release_tag }}
+          fileName: "BetterIN_v*.7z"
+          out-file-path: '2nd'
+      - name: 📥 Download 3rd last release
+        uses: robinraju/release-downloader@v1.8
+        with:
+          repository: ${{ github.repository }}
+          tag: ${{ steps.release_tags.outputs.third_release_tag }}
+          fileName: "BetterIN_v*.7z"
+          out-file-path: '3rd'
+      - name: Unpack releases
+        run: |
+          cd last
+          7z x "BetterIN*.7z" -otemp
+          if (Test-Path -Path ".\temp\BetterIN" -PathType Container) {
+              Move-Item -Path ".\temp\BetterIN" -Destination ".\BetterIN"
+          } else {
+              Rename-Item -Path ".\temp" -NewName ".\BetterIN"
+          }
+          cd ..
+          cd 2nd
+          7z x "BetterIN*.7z" -otemp
+          if (Test-Path -Path ".\temp\BetterIN" -PathType Container) {
+              Move-Item -Path ".\temp\BetterIN" -Destination ".\BetterIN"
+          } else {
+              Rename-Item -Path ".\temp" -NewName ".\BetterIN"
+          }
+          cd ..
+          cd 3rd
+          7z x "BetterIN*.7z" -otemp
+          if (Test-Path -Path ".\temp\BetterIN" -PathType Container) {
+              Move-Item -Path ".\temp\BetterIN" -Destination ".\BetterIN"
+          } else {
+              Rename-Item -Path ".\temp" -NewName ".\BetterIN"
+          }
+          cd ..
+          ls .\last
+          ls .\2nd
+          ls .\3rd
+      - name: 📦 Pack kachina-builder
+        run: |
+          cd dist
+          ..\kachina-builder.exe gen -j 6 -i BetterIN -m metadata.json -o hashed -r eavecat/BetterInfinityNikki -t ${{ needs.validate.outputs.version }} --diff-vers ..\last\BetterIN --diff-vers ..\2nd\BetterIN --diff-vers ..\3rd\BetterIN --diff-ignore *[.txt,.onnx] -u .\BetterIN\BetterIN.update.exe
+          ..\kachina-builder.exe pack -c ../BuildNikki/kachina_nikki.json -m metadata.json -d hashed -o BetterIN.Install.${{ needs.validate.outputs.version }}.exe
+      - uses: actions/upload-artifact@v4
+        with:
+          name: BetterIN_Install
+          path: dist/BetterIN.Install.*.exe
+      - uses: actions/upload-artifact@v4
+        with:
+          name: BetterIN_OnlineInst
+          path: dist/BetterIN/BetterIN.update.exe
+
+  build_setup:
+    runs-on: windows-latest
+    needs: [validate, build_dist]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: BetterIN_7z
+          path: dist
+      - name: Unpack BetterIN_*.7z & Repack
+        run: |
+          cd dist
+          7z x "BetterIN_v${{ needs.validate.outputs.version }}.7z"
+          cd BetterIN
+          7z a -t7z "..\..\publish.7z" *
+      - name: 📥 Download MicaSetup
+        uses: robinraju/release-downloader@v1.8
+        with:
+          repository: "lemutec/MicaSetup"
+          latest: true
+          fileName: "MicaSetup_v*.7z"
+      - name: 📦 Pack MicaSetup
+        run: |
+          $archiveFiles = Get-ChildItem -Path . -Filter "MicaSetup_v*.7z"
+          foreach ($archive in $archiveFiles) {
+              & 7z x $archive.FullName
+          }
+          Copy-Item -Path "BuildNikki\micasetup.json" -Destination "."
+          Copy-Item -Path "BuildNikki\MicaSetup.Tools" -Destination "." -Recurse -Force
+          .\makemica.exe micasetup.json
+          ren BetterIN_Setup.exe BetterIN_Setup_v${{ needs.validate.outputs.version }}.exe
+      - uses: actions/upload-artifact@v4
+        with:
+          name: BetterIN_Setup
+          path: BetterIN_Setup*.exe
+
+  create_release:
+    if: github.event.inputs.create-release == 'true'
+    needs: [validate, build_dist, build_installer]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ needs.validate.outputs.version }}
+          name: BetterIN v${{ needs.validate.outputs.version }}
+          draft: true
+          prerelease: ${{ contains(needs.validate.outputs.version, '-') }}
+          fail_on_unmatched_files: true
+          files: |
+            artifacts/BetterIN_7z/*.7z
+            artifacts/BetterIN_Install/*.exe

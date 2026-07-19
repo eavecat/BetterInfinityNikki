@@ -110,7 +110,7 @@ public class SystemControl
             Mat? mat = null;
             for (var i = 0; i < 5; i++)
             {
-                mat = capture.Capture();
+                mat = capture.Capture()?.Frame;
                 if (mat == null || mat.Empty())
                 {
                     await Task.Delay(1000);
