@@ -143,15 +143,8 @@ jobs:
           branch: main
           event: push
           workflow_conclusion: success
-      - name: 📥 Download last release
-        uses: robinraju/release-downloader@v1.8
-        with:
-          repository: ${{ github.repository }}
-          latest: true
-          fileName: "BetterIN_v*.7z"
-          out-file-path: 'last'
-      - name: 📥 Get 2nd and 3rd release
-        id: release_tags
+      - name: 📥 Get release count
+        id: release_info
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -164,60 +157,71 @@ jobs:
           $validReleases = $releases |
           Where-Object { -not $_.draft -and -not $_.prerelease } |
           Sort-Object { [DateTime]$_.published_at } -Descending
-          if ($validReleases.Count -lt 3) {
-              Write-Error "至少需要 3 个正式 Release（当前找到 $($validReleases.Count) 个）"
-              exit 1
+          echo "release_count=$($validReleases.Count)" >> $env:GITHUB_OUTPUT
+          if ($validReleases.Count -ge 1) {
+              "latest_tag=$($validReleases[0].tag_name)" >> $env:GITHUB_OUTPUT
           }
-          "second_release_tag=$($validReleases[1].tag_name)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
-          "third_release_tag=$($validReleases[2].tag_name)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
-
-      - name: 📥 Download 2nd last release
+          if ($validReleases.Count -ge 2) {
+              "second_tag=$($validReleases[1].tag_name)" >> $env:GITHUB_OUTPUT
+          }
+          if ($validReleases.Count -ge 3) {
+              "third_tag=$($validReleases[2].tag_name)" >> $env:GITHUB_OUTPUT
+          }
+      - name: 📥 Download last release
+        if: ${{ steps.release_info.outputs.release_count >= '1' }}
         uses: robinraju/release-downloader@v1.8
         with:
           repository: ${{ github.repository }}
-          tag: ${{ steps.release_tags.outputs.second_release_tag }}
+          tag: ${{ steps.release_info.outputs.latest_tag }}
+          fileName: "BetterIN_v*.7z"
+          out-file-path: 'last'
+      - name: 📥 Download 2nd last release
+        if: ${{ steps.release_info.outputs.release_count >= '2' }}
+        uses: robinraju/release-downloader@v1.8
+        with:
+          repository: ${{ github.repository }}
+          tag: ${{ steps.release_info.outputs.second_tag }}
           fileName: "BetterIN_v*.7z"
           out-file-path: '2nd'
       - name: 📥 Download 3rd last release
+        if: ${{ steps.release_info.outputs.release_count >= '3' }}
         uses: robinraju/release-downloader@v1.8
         with:
           repository: ${{ github.repository }}
-          tag: ${{ steps.release_tags.outputs.third_release_tag }}
+          tag: ${{ steps.release_info.outputs.third_tag }}
           fileName: "BetterIN_v*.7z"
           out-file-path: '3rd'
       - name: Unpack releases
+        shell: pwsh
         run: |
-          cd last
-          7z x "BetterIN*.7z" -otemp
-          if (Test-Path -Path ".\temp\BetterIN" -PathType Container) {
-              Move-Item -Path ".\temp\BetterIN" -Destination ".\BetterIN"
-          } else {
-              Rename-Item -Path ".\temp" -NewName ".\BetterIN"
+          $dirs = @("last", "2nd", "3rd")
+          foreach ($dir in $dirs) {
+              if (Test-Path ".\$dir") {
+                  cd $dir
+                  7z x "BetterIN*.7z" -otemp
+                  if (Test-Path -Path ".\temp\BetterIN" -PathType Container) {
+                      Move-Item -Path ".\temp\BetterIN" -Destination ".\BetterIN"
+                  } else {
+                      Rename-Item -Path ".\temp" -NewName ".\BetterIN"
+                  }
+                  cd ..
+              }
           }
-          cd ..
-          cd 2nd
-          7z x "BetterIN*.7z" -otemp
-          if (Test-Path -Path ".\temp\BetterIN" -PathType Container) {
-              Move-Item -Path ".\temp\BetterIN" -Destination ".\BetterIN"
-          } else {
-              Rename-Item -Path ".\temp" -NewName ".\BetterIN"
-          }
-          cd ..
-          cd 3rd
-          7z x "BetterIN*.7z" -otemp
-          if (Test-Path -Path ".\temp\BetterIN" -PathType Container) {
-              Move-Item -Path ".\temp\BetterIN" -Destination ".\BetterIN"
-          } else {
-              Rename-Item -Path ".\temp" -NewName ".\BetterIN"
-          }
-          cd ..
-          ls .\last
-          ls .\2nd
-          ls .\3rd
-      - name: 📦 Pack kachina-builder
+      - name: 📦 Pack kachina-builder (with diff)
+        if: ${{ steps.release_info.outputs.release_count >= '1' }}
         run: |
           cd dist
-          ..\kachina-builder.exe gen -j 6 -i BetterIN -m metadata.json -o hashed -r eavecat/BetterInfinityNikki -t ${{ needs.validate.outputs.version }} --diff-vers ..\last\BetterIN --diff-vers ..\2nd\BetterIN --diff-vers ..\3rd\BetterIN --diff-ignore *[.txt,.onnx] -u .\BetterIN\BetterIN.update.exe
+          $diffArgs = ""
+          if (Test-Path "..\last\BetterIN") { $diffArgs += " --diff-vers ..\last\BetterIN" }
+          if (Test-Path "..\2nd\BetterIN") { $diffArgs += " --diff-vers ..\2nd\BetterIN" }
+          if (Test-Path "..\3rd\BetterIN") { $diffArgs += " --diff-vers ..\3rd\BetterIN" }
+          ..\kachina-builder.exe gen -j 6 -i BetterIN -m metadata.json -o hashed -r eavecat/BetterInfinityNikki -t ${{ needs.validate.outputs.version }} $diffArgs --diff-ignore *[.txt,.onnx] -u .\BetterIN\BetterIN.update.exe
+          ..\kachina-builder.exe pack -c ../BuildNikki/kachina_nikki.json -m metadata.json -d hashed -o BetterIN.Install.${{ needs.validate.outputs.version }}.exe
+      - name: 📦 Pack kachina-builder (full, no diff)
+        if: ${{ steps.release_info.outputs.release_count < '1' }}
+        run: |
+          cd dist
+          ..\kachina-builder.exe gen -j 6 -i BetterIN -m metadata.json -o hashed -r eavecat/BetterInfinityNikki -t ${{ needs.validate.outputs.version }} --diff-ignore *[.txt,.onnx] -u .\BetterIN\BetterIN.update.exe
           ..\kachina-builder.exe pack -c ../BuildNikki/kachina_nikki.json -m metadata.json -d hashed -o BetterIN.Install.${{ needs.validate.outputs.version }}.exe
       - uses: actions/upload-artifact@v4
         with:
@@ -280,7 +284,7 @@ jobs:
         with:
           tag_name: ${{ needs.validate.outputs.version }}
           name: BetterIN v${{ needs.validate.outputs.version }}
-          draft: true
+          draft: false
           prerelease: ${{ contains(needs.validate.outputs.version, '-') }}
           fail_on_unmatched_files: true
           files: |
